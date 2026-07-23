@@ -1,0 +1,12 @@
+name: Feature request
+description: Suggest a focused improvement
+body:
+  - type: markdown
+    attributes:
+      value: Do not include IP addresses, secrets, config.php, credentials, or production access logs.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and proposed outcome
+    validations:
+      required: true

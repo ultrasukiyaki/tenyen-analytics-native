@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible defect
+body:
+  - type: markdown
+    attributes:
+      value: Remove IP addresses, site tokens, encryption/HMAC secrets, database credentials, config.php, and raw production access logs.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: PHP, database, and Tenyen Analytics versions
+    validations:
+      required: true
