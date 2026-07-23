@@ -52,7 +52,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 ?>
 <!doctype html><html lang="<?= tyaav_h($translator->htmlLang()) ?>"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?= tyaav_h($initial['title']) ?> | Tenyen Analytics</title>
-<link rel="stylesheet" href="admin-app.css?v=0.5.6"><link rel="stylesheet" href="admin-history.css?v=0.5.6"></head><body>
+<link rel="stylesheet" href="admin-app.css?v=0.5.6"><link rel="stylesheet" href="admin-history.css?v=0.5.6.1"></head><body>
 <div class="app-shell" data-app-shell>
 <header class="topbar"><button class="menu-toggle" type="button" data-menu-toggle aria-label="Menu">☰</button><a class="brand" href="?view=dashboard" data-view-link="dashboard"><span class="brand-mark">T</span><span><b>Tenyen Analytics</b><small>v0.5.6</small></span></a><div class="topbar-site"><?= tyaav_h($siteHost) ?></div><div class="topbar-status" data-global-status><?= tyaav_h($translator->get('common.ready')) ?></div><a class="logout-link" href="?logout=1"><?= tyaav_h($translator->get('auth.logout')) ?></a></header>
 <aside class="sidebar" data-sidebar><nav><?php foreach($views as $key=>$item): ?><a href="?view=<?= tyaav_h($key) ?>" data-view-link="<?= tyaav_h($key) ?>" class="<?= $view===$key?'active':'' ?>"><span class="nav-icon"><?= tyaav_h($item['icon']) ?></span><span><?= tyaav_h($item['label']) ?></span></a><?php endforeach; ?></nav></aside>

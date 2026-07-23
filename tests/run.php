@@ -78,4 +78,12 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__
     $test(!preg_match('/[\x{3040}-\x{30ff}\x{3400}-\x{9fff}]/u', $contents), 'no hard-coded Japanese browser strings: ' . $javascript->getFilename());
 }
 
+$historyCss = (string)file_get_contents(dirname(__DIR__) . '/public/admin/admin-history.css');
+$test(
+    str_contains($historyCss, 'tr:not(.tya-history-detail-row)')
+        && str_contains($historyCss, '.tya-history-detail-grid dl{margin:0;min-width:0}')
+        && str_contains($historyCss, 'overflow-wrap:anywhere'),
+    'history detail rows wrap long values without overlapping adjacent columns'
+);
+
 exit($failures === 0 ? 0 : 1);
