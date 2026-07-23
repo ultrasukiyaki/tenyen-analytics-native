@@ -75,7 +75,7 @@
       content.focus?.({preventScroll:true});
     } catch (error) {
       if (error.name === 'AbortError') return;
-      errorBox.innerHTML = `<strong>${escapeHtml(t('common.failed_view'))}</strong><p>${escapeHtml(error.message || String(error))}</p><button class="button" type="button" data-retry>Retry</button>`;
+      errorBox.innerHTML = `<strong>${escapeHtml(t('common.failed_view'))}</strong><p>${escapeHtml(error.message || String(error))}</p><button class="button" type="button" data-retry>${escapeHtml(t('common.retry'))}</button>`;
       errorBox.hidden = false; status.textContent = t('common.failed_view');
     } finally {
       if (request === controller) {

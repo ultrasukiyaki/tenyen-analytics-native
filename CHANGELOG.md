@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.6 - 2026-07-23
+
+### Fixed
+
+- Replaced remaining Kansai-dialect text in the Japanese interface with standard Japanese.
+- Audited PHP and JavaScript interface strings for translation consistency.
+- Preserved MaxMind ASN organization names exactly as provided.
+- No database schema changes are required; existing v0.5.5 configuration and data remain compatible.
+
+### 修正
+
+- 日本語インターフェースに残っていた関西弁の文言を標準語へ修正しました。
+- PHPおよびJavaScriptの表示文言を再点検し、翻訳の一貫性を改善しました。
+- MaxMindが提供するASN組織名は変更せず、そのまま表示します。
+- DBスキーマ変更はなく、既存のv0.5.5の設定とデータを引き続き利用できます。
+
 ## 0.5.4
 
 - Native管理画面で `hidden` 属性がCSSに上書きされ、読み込み表示が消えない問題を修正。

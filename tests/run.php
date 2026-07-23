@@ -57,10 +57,18 @@ $installer = file_get_contents(dirname(__DIR__) . '/app/core/src/Installer.php')
 $test(str_contains((string)$installer, "'fallback_locale' => 'en'"), 'generated configuration includes locale keys');
 $test(LocaleResolver::resolve(['app' => []], null, null, 'en') === 'en', 'old configuration remains loadable');
 
-$versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'README.md', 'CHANGELOG.md'];
+$versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md'];
 foreach ($versionFiles as $file) {
-    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.5.5'), "version reference: {$file}");
+    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.5.6'), "version reference: {$file}");
 }
+
+$english = require dirname(__DIR__) . '/app/i18n/en.php';
+$japanese = require dirname(__DIR__) . '/app/i18n/ja.php';
+$productionEnglish = $english;
+unset($productionEnglish['test.english_only']);
+$test(array_keys($productionEnglish) === array_keys($japanese), 'English and Japanese production translation keys are consistent');
+$test($en->get('dashboard.description') === 'Get a quick overview of activity across the entire site.', 'English dashboard description');
+$test($ja->get('dashboard.description') === 'サイト全体の動きを簡潔に確認できます。', 'standard-Japanese dashboard description');
 
 foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__) . '/public')) as $javascript) {
     if (!$javascript->isFile() || $javascript->getExtension() !== 'js') {
