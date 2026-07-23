@@ -1,0 +1,20 @@
+{
+  "name": "ultrasukiyaki/tenyen-analytics",
+  "description": "A self-hosted analytics platform for PHP websites with a browser-based installer, engagement tracking, GeoLite2 geolocation, ASN insights, bot detection, and an asynchronous admin console.",
+  "type": "project",
+  "license": "GPL-2.0-or-later",
+  "authors": [
+    {
+      "name": "10yendama.com",
+      "homepage": "https://www.10yendama.com/"
+    }
+  ],
+  "require": {
+    "php": ">=8.1",
+    "ext-json": "*",
+    "ext-pdo": "*"
+  },
+  "suggest": {
+    "maxmind-db/reader": "Optional official MaxMind DB reader. Tenyen Analytics includes a built-in fallback reader."
+  }
+}

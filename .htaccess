@@ -1,0 +1,19 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(?:app|bin|data|storage|vendor)(?:/|$) - [F,L,NC]
+</IfModule>
+
+<IfModule mod_authz_core.c>
+  <FilesMatch "^(?:config\.php|config\.example\.php|composer\.(?:json|lock)|CHANGELOG\.md|README\.md|THIRD-PARTY-NOTICES\.md)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+  <FilesMatch "^(?:config\.php|config\.example\.php|composer\.(?:json|lock)|CHANGELOG\.md|README\.md|THIRD-PARTY-NOTICES\.md)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>

@@ -1,0 +1,72 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local environment, secrets, and machine-specific configuration
+.env
+.env.*
+!.env.example
+/config.php
+/config.local.php
+*.local.php
+*.local
+
+# PHP / Composer dependencies and tool caches
+/vendor/
+composer.phar
+.phpunit.result.cache
+.phpunit.cache/
+.php-cs-fixer.cache
+.phpstan.cache/
+
+# JavaScript dependencies and tool caches
+/node_modules/
+.npm/
+.yarn/
+
+# Runtime data: keep only protection/placeholders
+/storage/*
+!/storage/.gitkeep
+!/storage/.htaccess
+/data/*
+!/data/.gitkeep
+!/data/.htaccess
+
+# GeoLite2 / MaxMind databases and downloaded archives
+*.mmdb
+GeoLite2-*.tar.gz
+GeoLite2-*.zip
+GeoLite2-*.mmdb
+
+# Logs, caches, temporary files, uploads, and backups
+*.log
+/logs/
+/cache/
+/tmp/
+/tests/tmp/
+/coverage/
+*.bak
+*.old
+*.orig
+*.tmp
+
+# Generated release artifacts
+/dist/
+/build/
+/release/
+/*.zip
+/*.tar.gz
+/*.tgz
+/*SHA256SUMS*.txt
+/*.sha256
+
+# Test output
+.junit.xml
+
+# Miscellaneous
+*.pid
