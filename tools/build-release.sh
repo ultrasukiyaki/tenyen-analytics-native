@@ -40,8 +40,8 @@ mkdir -p "$package/data" "$package/storage"
 cp -p "$root/data/.gitkeep" "$root/data/.htaccess" "$package/data/"
 cp -p "$root/storage/.gitkeep" "$root/storage/.htaccess" "$package/storage/"
 
-archive="$dist/tenyen-analytics-v0.5.6-stable.zip"
-checksums="$dist/tenyen-analytics-v0.5.6-SHA256SUMS.txt"
+archive="$dist/tenyen-analytics-v0.5.7-stable.zip"
+checksums="$dist/tenyen-analytics-v0.5.7-SHA256SUMS.txt"
 rm -f "$archive" "$checksums"
 (cd "$stage" && zip -qr "$archive" tenyen-analytics)
 unzip -t "$archive"
