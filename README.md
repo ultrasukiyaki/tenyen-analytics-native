@@ -50,7 +50,7 @@ Run `php bin/doctor.php` for diagnostics, `php bin/cleanup.php` for retention cl
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Version 0.5.5 requires no database migration. Old configurations without locale keys remain supported.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Version 0.5.6 requires no database migration. Existing v0.5.5 configurations and data, including configurations without locale keys, remain supported.
 
 ## Privacy and security
 

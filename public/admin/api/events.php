@@ -258,7 +258,7 @@ ob_start();
 <thead><tr>
 <th data-col="datetime">日時</th><th data-col="event">種別</th><th data-col="ip">IP</th><th data-col="location">地域</th><th data-col="organization">ASN／法人候補</th><th data-col="page">ページ</th><th data-col="referrer">参照元</th><th data-col="environment">環境</th><th data-col="details">詳細</th>
 </tr></thead><tbody>
-<?php if (!$rows): ?><tr><td colspan="9"><div class="tya-history-empty">条件に一致するアクセスデータがないで。</div></td></tr><?php endif; ?>
+<?php if (!$rows): ?><tr><td colspan="9"><div class="tya-history-empty"><?= tya_api_h($services['translator']->get('history.empty')) ?></div></td></tr><?php endif; ?>
 <?php foreach ($rows as $row):
     $ip = $crypto->decryptIp($row['ip_encrypted'] ?? '');
     $localTime = (new DateTimeImmutable((string)$row['occurred_at'], $utc))->setTimezone($timezone)->format('Y-m-d H:i:s');
