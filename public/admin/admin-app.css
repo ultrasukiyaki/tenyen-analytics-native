@@ -3,9 +3,9 @@
 @media(max-width:900px){.app-shell{grid-template-columns:1fr}.topbar{grid-column:1}.menu-toggle{display:block}.brand{min-width:0}.brand span:last-child{display:none}.topbar-site{display:none}.sidebar{position:fixed;z-index:95;left:0;top:58px;width:var(--sidebar);transform:translateX(-102%);transition:transform .18s ease;box-shadow:8px 0 18px rgba(0,0,0,.2)}.app-shell.menu-open .sidebar{transform:translateX(0)}.main{padding:20px 15px 40px}.insight-grid,.chart-grid{grid-template-columns:1fr}.diagnostics{grid-template-columns:1fr}.system-list{grid-template-columns:1fr}.system-list dt{border-bottom:0}.view-head{flex-direction:column}.topbar-status{font-size:11px}.cards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.cards{grid-template-columns:1fr}.filters{align-items:stretch}.filters label,.filters input,.filters select,.filters .button{width:100%}.main{padding:14px 9px 30px}.panel,.chart-card{padding:12px}.view-head h1{font-size:23px}}
 
-/* v0.5.6 session login */
+/* v0.5.7 session login */
 .logout-link{color:#475569;text-decoration:none;font-size:13px;font-weight:700;padding:7px 10px;border:1px solid #cbd5e1;border-radius:7px;background:#fff}.logout-link:hover{background:#f8fafc;color:#1d4ed8}
 
-/* v0.5.6 GeoLite2 chunk uploader */
+/* v0.5.7 GeoLite2 chunk uploader */
 .product-footer{padding:24px 20px;text-align:center;color:#646970;font-size:12px}.product-footer a{color:inherit}
 .mmdb-form{display:grid;gap:16px}.mmdb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.mmdb-grid label{display:grid;gap:8px;font-weight:700}.mmdb-grid input[type=file]{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}.mmdb-progress{padding:14px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:10px}.mmdb-track{height:10px;margin:10px 0 6px;background:#dbeafe;border-radius:999px;overflow:hidden}.mmdb-track span{display:block;height:100%;width:0;background:#2563eb;transition:width .15s ease}.mmdb-progress.error{border-color:#fecaca;background:#fef2f2;color:#991b1b}@media(max-width:720px){.mmdb-grid{grid-template-columns:1fr}}

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.7 - 2026-07-23
+
+### Fixed
+
+- Prevented long values such as User-Agent strings from overlapping adjacent columns in expanded access-history details.
+- Excluded expanded detail rows from the no-wrap table preference and added safe long-text wrapping.
+- Updated the history stylesheet cache key so existing browsers load the corrected layout.
+- No database schema changes are required; existing v0.5.6 configuration and data remain compatible.
+
+### 修正
+
+- アクセス履歴の展開詳細で、User-Agentなどの長い文字列が隣の列へ重なる問題を修正しました。
+- 展開詳細行を折り返し禁止設定の対象外とし、長い文字列を安全に折り返すよう改善しました。
+- 修正済みCSSが既存ブラウザにも読み込まれるよう、キャッシュキーを更新しました。
+- DBスキーマ変更はなく、既存のv0.5.6の設定とデータを引き続き利用できます。
+
 ## 0.5.6 - 2026-07-23
 
 ### Fixed
