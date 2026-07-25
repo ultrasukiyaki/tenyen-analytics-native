@@ -19,6 +19,8 @@ return [
     'nav.realtime' => 'リアルタイム',
     'nav.history' => 'アクセス履歴',
     'nav.sessions' => 'セッション',
+    'nav.events' => 'イベント',
+    'nav.campaigns' => 'キャンペーン',
     'nav.content' => 'コンテンツ',
     'nav.referrers' => '流入元',
     'nav.organizations' => 'ASN・組織',

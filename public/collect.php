@@ -6,6 +6,7 @@ use Tenyen\Analytics\BotDetector;
 use Tenyen\Analytics\IpResolver;
 use Tenyen\Analytics\Payload;
 use Tenyen\Analytics\RateLimiter;
+use Tenyen\Analytics\TrafficAttribution;
 use Tenyen\Analytics\UserAgentParser;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -63,6 +64,7 @@ try {
     }
 
     $payload = Payload::normalize($input);
+    $attribution = TrafficAttribution::classify($payload['path'], $payload['referrer'], (string)($app['site_url'] ?? ''));
     $ua = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 1024);
     $isBot = BotDetector::isBot($ua);
     if ($isBot && !($app['log_bots'] ?? true)) {
@@ -76,14 +78,16 @@ try {
 
     $sql = <<<'SQL'
 INSERT INTO tya_events (
-    occurred_at, event_type, visitor_id, session_id, ip_encrypted, ip_hash, ip_version,
+    occurred_at, event_type, event_name, visitor_id, session_id, ip_encrypted, ip_hash, ip_version,
     country_code, country_name, region, city, latitude, longitude, accuracy_radius,
-    asn, asn_org, path, page_title, referrer, target_url, user_agent, browser, os,
+    asn, asn_org, path, page_title, referrer, traffic_channel, referrer_domain,
+    utm_source, utm_medium, utm_campaign, utm_content, utm_term, target_url, event_metadata, user_agent, browser, os,
     device_type, language, timezone, screen, viewport, duration_ms, scroll_depth, is_bot
 ) VALUES (
-    :occurred_at, :event_type, :visitor_id, :session_id, :ip_encrypted, :ip_hash, :ip_version,
+    :occurred_at, :event_type, :event_name, :visitor_id, :session_id, :ip_encrypted, :ip_hash, :ip_version,
     :country_code, :country_name, :region, :city, :latitude, :longitude, :accuracy_radius,
-    :asn, :asn_org, :path, :page_title, :referrer, :target_url, :user_agent, :browser, :os,
+    :asn, :asn_org, :path, :page_title, :referrer, :traffic_channel, :referrer_domain,
+    :utm_source, :utm_medium, :utm_campaign, :utm_content, :utm_term, :target_url, :event_metadata, :user_agent, :browser, :os,
     :device_type, :language, :timezone, :screen, :viewport, :duration_ms, :scroll_depth, :is_bot
 )
 SQL;
@@ -91,6 +95,7 @@ SQL;
     $stmt->execute([
         'occurred_at' => gmdate('Y-m-d H:i:s'),
         'event_type' => $payload['event'],
+        'event_name' => $payload['event_name'],
         'visitor_id' => $payload['visitor_id'],
         'session_id' => $payload['session_id'],
         'ip_encrypted' => $ip !== '' ? $crypto->encryptIp($ip) : null,
@@ -108,7 +113,15 @@ SQL;
         'path' => $payload['path'],
         'page_title' => $payload['title'],
         'referrer' => $payload['referrer'],
+        'traffic_channel' => $attribution['channel'],
+        'referrer_domain' => $attribution['referrer_domain'],
+        'utm_source' => $attribution['utm_source'],
+        'utm_medium' => $attribution['utm_medium'],
+        'utm_campaign' => $attribution['utm_campaign'],
+        'utm_content' => $attribution['utm_content'],
+        'utm_term' => $attribution['utm_term'],
         'target_url' => $payload['target_url'],
+        'event_metadata' => $payload['metadata'] ? json_encode($payload['metadata'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
         'user_agent' => $ua,
         'browser' => $agent['browser'],
         'os' => $agent['os'],

@@ -15,6 +15,9 @@ return [
         'retention_days' => 90,
         'trusted_proxy_header' => '', // '', cf-connecting-ip, x-real-ip, x-forwarded-for
         'log_bots' => true,
+        'track_internal_links' => false,
+        'track_buttons' => false,
+        'track_forms' => false, // Explicitly opt in; field values are never collected.
         // Optional ASN category overrides: research, government, company, isp, cloud, proxy, bot, unknown.
         'organization_overrides' => [
             // 2907 => 'research',

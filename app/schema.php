@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS tya_events (
     event_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     occurred_at DATETIME NOT NULL,
     event_type VARCHAR(32) NOT NULL,
+    event_name VARCHAR(64) NOT NULL DEFAULT '',
     visitor_id VARCHAR(64) NOT NULL DEFAULT '',
     session_id VARCHAR(64) NOT NULL DEFAULT '',
     ip_encrypted VARBINARY(255) NULL,
@@ -24,7 +25,15 @@ CREATE TABLE IF NOT EXISTS tya_events (
     path TEXT NOT NULL,
     page_title VARCHAR(512) NOT NULL DEFAULT '',
     referrer TEXT NULL,
+    traffic_channel VARCHAR(32) NOT NULL DEFAULT '',
+    referrer_domain VARCHAR(253) NOT NULL DEFAULT '',
+    utm_source VARCHAR(255) NOT NULL DEFAULT '',
+    utm_medium VARCHAR(255) NOT NULL DEFAULT '',
+    utm_campaign VARCHAR(255) NOT NULL DEFAULT '',
+    utm_content VARCHAR(255) NOT NULL DEFAULT '',
+    utm_term VARCHAR(255) NOT NULL DEFAULT '',
     target_url TEXT NULL,
+    event_metadata TEXT NULL,
     user_agent VARCHAR(1024) NOT NULL DEFAULT '',
     browser VARCHAR(64) NOT NULL DEFAULT '',
     os VARCHAR(64) NOT NULL DEFAULT '',
@@ -44,5 +53,8 @@ CREATE TABLE IF NOT EXISTS tya_events (
     KEY asn_time (asn, occurred_at),
     KEY country_time (country_code, occurred_at),
     KEY bot_time (is_bot, occurred_at)
+    ,KEY channel_time (traffic_channel, occurred_at)
+    ,KEY campaign_time (utm_campaign, occurred_at)
+    ,KEY event_name_time (event_name, occurred_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL;

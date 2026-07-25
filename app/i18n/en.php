@@ -20,6 +20,8 @@ return [
     'nav.realtime' => 'Real-time',
     'nav.history' => 'Access History',
     'nav.sessions' => 'Sessions',
+    'nav.events' => 'Events',
+    'nav.campaigns' => 'Campaigns',
     'nav.content' => 'Content',
     'nav.referrers' => 'Referrers',
     'nav.organizations' => 'ASN / Organizations',

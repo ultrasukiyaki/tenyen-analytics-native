@@ -81,7 +81,8 @@ final class SessionAnalytics
             return null;
         }
         $events = $this->pdo->prepare(
-            'SELECT event_id,occurred_at,event_type,path,page_title,referrer,target_url,duration_ms,scroll_depth '
+            'SELECT event_id,occurred_at,event_type,event_name,path,page_title,referrer,target_url,duration_ms,scroll_depth,'
+            . 'traffic_channel,referrer_domain,utm_source,utm_medium,utm_campaign,utm_content,utm_term,event_metadata '
             . 'FROM tya_events WHERE session_id = ? ORDER BY occurred_at ASC,event_id ASC'
         );
         $events->execute([$sessionId]);
@@ -174,6 +175,11 @@ SELECT e.session_id,MAX(e.visitor_id) visitor_id,MIN(e.occurred_at) session_star
        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN e.path END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) landing_page,
        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN e.path END ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) exit_page,
        SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(e.referrer,'') ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) referrer,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN NULLIF(e.traffic_channel,'') END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) traffic_channel,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN NULLIF(e.referrer_domain,'') END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) referrer_domain,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN NULLIF(e.utm_source,'') END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) utm_source,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN NULLIF(e.utm_medium,'') END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) utm_medium,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN NULLIF(e.utm_campaign,'') END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) utm_campaign,
        SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(e.country_name,'') ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) country_name,
        SUBSTRING_INDEX(GROUP_CONCAT(e.asn ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) asn,
        SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(e.asn_org,'') ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) asn_org,

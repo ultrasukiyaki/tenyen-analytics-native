@@ -6,6 +6,7 @@ use Tenyen\Analytics\Crypto;
 use Tenyen\Analytics\GeoIp;
 use Tenyen\Analytics\LocaleResolver;
 use Tenyen\Analytics\RuntimePreferences;
+use Tenyen\Analytics\SchemaMigrator;
 use Tenyen\Analytics\Translator;
 
 $root = dirname(__DIR__);
@@ -43,6 +44,7 @@ $pdo = new PDO(
         PDO::ATTR_EMULATE_PREPARES => false,
     ]
 );
+SchemaMigrator::migrate($pdo);
 
 $app = $config['app'] ?? [];
 $crypto = new Crypto(
