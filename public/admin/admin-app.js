@@ -14,7 +14,7 @@
   const errorBox = shell.querySelector('[data-view-error]');
   const status = shell.querySelector('[data-global-status]');
   const sidebar = shell.querySelector('[data-sidebar]');
-  let request = null, historyInstance = null, refreshTimer = null, currentPayload = null;
+  let request = null, historyInstance = null, sessionsInstance = null, refreshTimer = null, currentPayload = null;
 
   function initialState() {
     try { return JSON.parse(document.getElementById('tya-initial-state')?.textContent || '{}'); }
@@ -27,6 +27,7 @@
 
   function stopWidgets() {
     historyInstance?.destroy?.(); historyInstance = null;
+    sessionsInstance?.destroy?.(); sessionsInstance = null;
     window.TYCharts?.clear?.();
     if (refreshTimer) clearInterval(refreshTimer); refreshTimer = null;
   }
@@ -35,6 +36,7 @@
     stopWidgets(); currentPayload = payload;
     window.TYCharts?.render?.(content, payload.chart_data || {});
     if (payload.history_config) historyInstance = window.TYHistory?.init?.(content, payload.history_config) || null;
+    sessionsInstance = window.TYSessions?.init?.(content) || null;
     const seconds = Number(payload.refresh_seconds || 0);
     if (seconds > 0) refreshTimer = setInterval(() => {
       if (document.visibilityState === 'visible') load(new URL(location.href), {push:false, silent:true});

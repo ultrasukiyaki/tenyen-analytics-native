@@ -49,7 +49,7 @@ foreach ($samples as $organization => $category) {
 }
 
 $adminViews = file_get_contents(dirname(__DIR__) . '/app/admin-views.php');
-foreach (['dashboard','realtime','history','content','referrers','organizations','audience','engagement','system','settings'] as $view) {
+foreach (['dashboard','realtime','history','sessions','content','referrers','organizations','audience','engagement','system','settings'] as $view) {
     $test(str_contains((string)$adminViews, "'{$view}'"), "admin view exists: {$view}");
 }
 
@@ -59,7 +59,7 @@ $test(LocaleResolver::resolve(['app' => []], null, null, 'en') === 'en', 'old co
 
 $versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md'];
 foreach ($versionFiles as $file) {
-    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.5.7'), "version reference: {$file}");
+    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.6.0'), "version reference: {$file}");
 }
 
 $english = require dirname(__DIR__) . '/app/i18n/en.php';
@@ -69,6 +69,15 @@ unset($productionEnglish['test.english_only']);
 $test(array_keys($productionEnglish) === array_keys($japanese), 'English and Japanese production translation keys are consistent');
 $test($en->get('dashboard.description') === 'Get a quick overview of activity across the entire site.', 'English dashboard description');
 $test($ja->get('dashboard.description') === 'サイト全体の動きを簡潔に確認できます。', 'standard-Japanese dashboard description');
+$test($en->get('nav.sessions') === 'Sessions' && $ja->get('nav.sessions') === 'セッション', 'bilingual Sessions navigation');
+
+$sessionService = (string)file_get_contents(dirname(__DIR__) . '/app/core/src/SessionAnalytics.php');
+$test(str_contains($sessionService, "e.session_id <> ''"), 'legacy rows without session IDs are excluded');
+$test(str_contains($sessionService, 'ORDER BY occurred_at ASC,event_id ASC'), 'journey ordering has deterministic secondary order');
+$test(str_contains($sessionService, "MAX(duration_ms) max_duration"), 'cumulative engagement uses the final maximum per page');
+$test(str_contains($sessionService, "SUM(e.event_type='pageview')"), 'pageviews exclude engagement events');
+$sessionsApi = (string)file_get_contents(dirname(__DIR__) . '/public/admin/api/sessions.php');
+$test(str_contains($sessionsApi, 'tyaa_require_auth') && str_contains($sessionsApi, 'tyaa_verify_csrf'), 'session API requires authentication and CSRF');
 
 foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__) . '/public')) as $javascript) {
     if (!$javascript->isFile() || $javascript->getExtension() !== 'js') {

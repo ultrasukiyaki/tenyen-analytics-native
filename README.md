@@ -50,7 +50,9 @@ Run `php bin/doctor.php` for diagnostics, `php bin/cleanup.php` for retention cl
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Version 0.5.7 requires no database migration. Existing v0.5.6 and earlier configurations and data, including configurations without locale keys, remain supported.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Version 0.6.0 requires no database migration. Existing v0.5.7 and earlier configurations and data, including configurations without locale keys, remain supported.
+
+Version 0.6.0 adds authenticated, CSRF-protected session and anonymous-browser journey views. A bounce is an entry session with exactly one pageview. Bounce rate is bounces divided by entries; exit rate is sessions where a page is the exit divided by that page's pageviews. Empty denominators return 0%.
 
 ## Privacy and security
 

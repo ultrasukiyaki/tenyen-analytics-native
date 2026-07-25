@@ -285,8 +285,8 @@ ob_start();
 <dl><dt>ASN／組織</dt><dd><?= tya_api_h($asnText ?: '―') ?></dd></dl>
 <dl><dt>滞在</dt><dd><?= tya_api_h(tya_api_duration((int)$row['duration_ms'])) ?></dd></dl>
 <dl><dt>スクロール</dt><dd><?= tya_api_h((int)$row['scroll_depth']) ?>%</dd></dl>
-<dl><dt>セッション</dt><dd><code><?= tya_api_h($row['session_id']) ?></code></dd></dl>
-<dl><dt>訪問者</dt><dd><code><?= tya_api_h($row['visitor_id']) ?></code></dd></dl>
+<dl><dt>セッション</dt><dd><code><?= tya_api_h($row['session_id']) ?></code><?php if ($row['session_id'] !== ''): ?> <a href="?view=sessions&amp;session=<?= rawurlencode((string)$row['session_id']) ?>">セッション詳細を表示</a><?php endif; ?></dd></dl>
+<dl><dt>訪問者</dt><dd><code><?= tya_api_h($row['visitor_id']) ?></code><?php if ($row['visitor_id'] !== ''): ?> <a href="?view=sessions&amp;visitor=<?= rawurlencode((string)$row['visitor_id']) ?>">訪問者の詳細を表示</a><?php endif; ?></dd></dl>
 <dl><dt>画面</dt><dd><?= tya_api_h(trim((string)$row['screen'] . ' / ' . (string)$row['viewport'], ' /') ?: '―') ?></dd></dl>
 <dl><dt>User-Agent</dt><dd><?= tya_api_h($row['user_agent']) ?></dd></dl>
 <dl><dt>完全な参照元</dt><dd><?= $row['referrer'] !== '' ? tya_api_link((string)$row['referrer'], (string)$row['referrer']) : 'Direct' ?></dd></dl>
