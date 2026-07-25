@@ -8,6 +8,8 @@ use Tenyen\Analytics\LocaleResolver;
 use Tenyen\Analytics\OrganizationClassifier;
 use Tenyen\Analytics\RuntimePreferences;
 use Tenyen\Analytics\Translator;
+use Tenyen\Analytics\TrafficAttribution;
+use Tenyen\Analytics\Payload;
 
 $failures = 0;
 $test = static function (bool $condition, string $message) use (&$failures): void {
@@ -49,7 +51,7 @@ foreach ($samples as $organization => $category) {
 }
 
 $adminViews = file_get_contents(dirname(__DIR__) . '/app/admin-views.php');
-foreach (['dashboard','realtime','history','sessions','content','referrers','organizations','audience','engagement','system','settings'] as $view) {
+foreach (['dashboard','realtime','history','sessions','events','campaigns','content','referrers','organizations','audience','engagement','system','settings'] as $view) {
     $test(str_contains((string)$adminViews, "'{$view}'"), "admin view exists: {$view}");
 }
 
@@ -57,9 +59,9 @@ $installer = file_get_contents(dirname(__DIR__) . '/app/core/src/Installer.php')
 $test(str_contains((string)$installer, "'fallback_locale' => 'en'"), 'generated configuration includes locale keys');
 $test(LocaleResolver::resolve(['app' => []], null, null, 'en') === 'en', 'old configuration remains loadable');
 
-$versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md'];
+$versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md', 'CHANGELOG.ja.md'];
 foreach ($versionFiles as $file) {
-    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.6.0'), "version reference: {$file}");
+    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.6.1'), "version reference: {$file}");
 }
 
 $english = require dirname(__DIR__) . '/app/i18n/en.php';
@@ -70,6 +72,25 @@ $test(array_keys($productionEnglish) === array_keys($japanese), 'English and Jap
 $test($en->get('dashboard.description') === 'Get a quick overview of activity across the entire site.', 'English dashboard description');
 $test($ja->get('dashboard.description') === 'サイト全体の動きを簡潔に確認できます。', 'standard-Japanese dashboard description');
 $test($en->get('nav.sessions') === 'Sessions' && $ja->get('nav.sessions') === 'セッション', 'bilingual Sessions navigation');
+$test($en->get('nav.events') === 'Events' && $ja->get('nav.events') === 'イベント', 'bilingual Events navigation');
+
+$test(TrafficAttribution::classify('/landing', '', 'https://example.com')['channel'] === 'Direct', 'direct traffic attribution');
+$test(TrafficAttribution::classify('/landing', 'https://example.com/from', 'https://example.com')['channel'] === 'Internal', 'internal traffic attribution');
+$test(TrafficAttribution::classify('/landing', 'https://www.google.com/search?q=x', 'https://example.com')['channel'] === 'Organic Search', 'Google organic attribution');
+$test(TrafficAttribution::classify('/landing', 'https://www.bing.com/search?q=x', 'https://example.com')['channel'] === 'Organic Search', 'Bing organic attribution');
+$test(TrafficAttribution::classify('/landing', 'https://bsky.app/profile/example', 'https://example.com')['channel'] === 'Social', 'Bluesky social attribution');
+$test(TrafficAttribution::classify('/landing', 'https://mastodon.example/@person', 'https://example.com')['channel'] === 'Social', 'Mastodon social attribution');
+$campaign = TrafficAttribution::classify('/?UTM_Source=News&utm_campaign=Launch&utm_campaign=ignored', '', 'https://example.com');
+$test($campaign['channel'] === 'Campaign' && $campaign['utm_source'] === 'News' && $campaign['utm_campaign'] === 'Launch', 'UTM precedence and duplicate handling');
+$test(strlen(TrafficAttribution::classify('/?utm_campaign=' . str_repeat('x', 400), '', 'https://example.com')['utm_campaign']) === 255, 'UTM value bound');
+$custom = Payload::normalize(['event'=>'custom','event_name'=>'radio_play','metadata'=>['station'=>'example','server'=>'primary']]);
+$test($custom['event_name'] === 'radio_play' && count($custom['metadata']) === 2, 'bounded radio custom event');
+$rejected = false;
+try { Payload::normalize(['event'=>'custom','event_name'=>'Invalid event','metadata'=>[]]); } catch (InvalidArgumentException) { $rejected = true; }
+$test($rejected, 'invalid custom event name rejected');
+$rejected = false;
+try { Payload::normalize(['event'=>'custom','event_name'=>'test','metadata'=>array_combine(array_map(static fn(int $n): string => 'k'.$n, range(1, 13)), range(1, 13))]); } catch (InvalidArgumentException) { $rejected = true; }
+$test($rejected, 'excessive metadata rejected');
 
 $sessionService = (string)file_get_contents(dirname(__DIR__) . '/app/core/src/SessionAnalytics.php');
 $test(str_contains($sessionService, "e.session_id <> ''"), 'legacy rows without session IDs are excluded');

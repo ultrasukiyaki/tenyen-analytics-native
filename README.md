@@ -10,7 +10,8 @@ The application stores analytics on infrastructure you control. It does not use 
 
 ## Features
 
-- Pageview, engagement, external-click, and download collection
+- Pageview, engagement, link, download, 404, and bounded custom-event collection
+- Traffic channels, referrer domains, and first-touch UTM campaign attribution
 - Encrypted raw-IP storage with HMAC exact-match search
 - GeoLite2 City and ASN enrichment with a built-in MMDB reader
 - Bot detection, organization classification, and ten asynchronous admin views
@@ -42,7 +43,19 @@ GeoLite2 MMDB files are not included. Obtain them under MaxMind's terms. The GUI
 
 ## Administration console
 
-Sign in with the installer-created account. Dashboard, Real-time, Access History, Content, Referrers, ASN / Organizations, Audience, Engagement, System, and Settings load asynchronously. Settings can store a non-secret interface-language preference under protected `storage/`.
+Sign in with the installer-created account. Events, Campaigns, Traffic Sources, Sessions, and the existing analysis views load asynchronously with authenticated, CSRF-protected requests.
+
+![Tenyen Analytics administration dashboard](screenshot_dashboard.png)
+
+## Event and campaign integration
+
+Automatic external-link and download tracking remains enabled. Internal links can be enabled with `track_internal_links`; buttons require both `track_buttons` and `data-tenyen-event="name"`; forms require `track_forms` and the same explicit attribute. Form values, DOM content, passwords, and payment data are never collected.
+
+Use `TYAnalytics.trackEvent('radio_play', {station: 'example-station', server: 'primary'})` or `TYAnalytics.trackEvent('stream_server_change', {server: 'backup'})`. Names and scalar metadata are strictly bounded. This is a generic API, not automatic radio integration.
+
+In an application/router-independent 404 template, call `TYAnalytics.trackNotFound(location.href)`. To avoid ambiguity, omit the normal pageview embed on that template or accept the pageview plus explicit 404 event intentionally.
+
+Channels are Direct, Organic Search, Social, Referral, Internal, Campaign, and Unknown. Recognized `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term` values override referrer classification. Campaign reports use the landing page as session first touch; later UTM values remain event metadata.
 
 ## CLI tools
 
@@ -50,9 +63,9 @@ Run `php bin/doctor.php` for diagnostics, `php bin/cleanup.php` for retention cl
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Version 0.6.0 requires no database migration. Existing v0.5.7 and earlier configurations and data, including configurations without locale keys, remain supported.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Version 0.6.1 runs an idempotent migration that adds attribution/event columns and three indexes. Existing v0.6.0 configurations, installed lock, credentials, tokens, keys, MMDB files, and historical events remain supported.
 
-Version 0.6.0 adds authenticated, CSRF-protected session and anonymous-browser journey views. A bounce is an entry session with exactly one pageview. Bounce rate is bounces divided by entries; exit rate is sessions where a page is the exit divided by that page's pageviews. Empty denominators return 0%.
+Bounce rate remains one-page entry sessions divided by entry sessions. Click rate is sessions with a matching click from a source page divided by sessions containing a qualifying pageview of that source page; a zero denominator returns 0%. Notification, retention-management, export, aggregation, multi-site, roles, and a full exclusion manager are deferred.
 
 ## Privacy and security
 

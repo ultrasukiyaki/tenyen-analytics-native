@@ -146,6 +146,9 @@ final class Installer
                 'retention_days' => 90,
                 'trusted_proxy_header' => '',
                 'log_bots' => true,
+                'track_internal_links' => false,
+                'track_buttons' => false,
+                'track_forms' => false,
                 'organization_overrides' => [],
             ],
             'database' => [
@@ -178,7 +181,7 @@ final class Installer
             throw new RuntimeException('storage/ratelimitを作成できません。');
         }
         $lockPayload = json_encode([
-            'version' => '0.6.0',
+            'version' => '0.6.1',
             'installed_at' => gmdate(DATE_ATOM),
             'public_url' => $publicUrl,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

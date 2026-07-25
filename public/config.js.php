@@ -17,6 +17,10 @@ try {
     $payload = [
         'endpoint' => $base . '/collect.php',
         'token' => (string)($app['site_token'] ?? ''),
+        'siteOrigin' => (string)($app['site_url'] ?? ''),
+        'trackInternalLinks' => (bool)($app['track_internal_links'] ?? false),
+        'trackButtons' => (bool)($app['track_buttons'] ?? false),
+        'trackForms' => (bool)($app['track_forms'] ?? false),
     ];
     echo 'window.TYAnalyticsConfig=' . json_encode($payload, JSON_UNESCAPED_SLASHES) . ';';
 } catch (Throwable) {

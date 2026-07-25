@@ -64,6 +64,9 @@ $summaryRows = static function (array $row) use ($h, $t, $local, $duration, $ove
         $t('sessions.landing') => (string)($row['landing_page'] ?? '—'),
         $t('sessions.exit') => (string)($row['exit_page'] ?? '—'),
         $t('sessions.referrer') => (string)($row['referrer'] ?? 'Direct'),
+        'Traffic channel' => (string)($row['traffic_channel'] ?? 'Unknown'),
+        'Referrer domain' => (string)($row['referrer_domain'] ?? '—'),
+        'UTM source / medium / campaign' => trim((string)($row['utm_source'] ?? '') . ' / ' . (string)($row['utm_medium'] ?? '') . ' / ' . (string)($row['utm_campaign'] ?? ''), ' /') ?: '—',
         $t('sessions.location') => (string)($row['country_name'] ?? '—'),
         'ASN / ' . $t('sessions.organization') => trim(((int)($row['asn'] ?? 0) ? 'AS' . (int)$row['asn'] . ' ' : '') . (string)($row['asn_org'] ?? '')) ?: '—',
         $t('sessions.category') => $t($classification['label_key']),
@@ -85,10 +88,11 @@ try {
         <dl class="journey-summary"><?= $summaryRows($detail['summary']) ?></dl>
         <?php if (($detail['summary']['visitor_id'] ?? '') !== ''): ?><button class="button secondary" data-visitor-id="<?= $h($detail['summary']['visitor_id']) ?>"><?= $h($t('sessions.visitor_history')) ?></button><?php endif; ?>
         <h3><?= $h($t('sessions.journey')) ?></h3><ol class="journey-steps">
-        <?php foreach ($detail['events'] as $event): ?><li><div class="journey-step-head"><time><?= $h($local($event['occurred_at'])) ?></time><strong><?= $h($event['event_type']) ?></strong></div>
+        <?php foreach ($detail['events'] as $event): ?><li><div class="journey-step-head"><time><?= $h($local($event['occurred_at'])) ?></time><strong><?= $h($event['event_type']) ?><?= $event['event_name'] ? ': ' . $h($event['event_name']) : '' ?></strong></div>
         <div class="journey-long"><?= $safeLink((string)$event['path'], (string)$event['page_title']) ?><br><code><?= $h($event['path']) ?></code></div>
         <?php if ($event['referrer']): ?><div class="journey-long"><?= $h($t('sessions.referrer')) ?>: <?= $h($event['referrer']) ?></div><?php endif; ?>
         <?php if ($event['target_url']): ?><div class="journey-long"><?= $h($t('sessions.target')) ?>: <?= $h($event['target_url']) ?></div><?php endif; ?>
+        <?php if ($event['event_metadata']): ?><div class="journey-long"><code><?= $h($event['event_metadata']) ?></code></div><?php endif; ?>
         <?php if ((int)$event['duration_ms'] || (int)$event['scroll_depth']): ?><small><?= $h($t('sessions.engagement')) ?>: <?= $h($duration((int)$event['duration_ms'])) ?> / <?= (int)$event['scroll_depth'] ?>%</small><?php endif; ?>
         </li><?php endforeach; ?></ol>
         <?php $json(['ok' => true, 'html' => (string)ob_get_clean()]);
