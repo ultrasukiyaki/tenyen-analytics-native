@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.0 - 2026-07-25
+
+### Added
+
+- Added an asynchronous session list, ordered session journeys, and anonymous browser visitor history.
+- Added entries, exits, bounces, estimated bounce rate, exit rate, sessions, and pageviews-per-session to Content.
+- Added navigation from access-history session and visitor identifiers.
+
+### Changed
+
+- Extended English and standard-Japanese interface resources and corrected residual dialect error text.
+
+### Security
+
+- Protected the new session API with existing administrator authentication and CSRF verification.
+
+### Compatibility
+
+- No database schema or index changes are required; the existing `session_time` and `visitor_time` indexes are reused.
+- Existing v0.5.7 configuration and data remain compatible. Upgrade packages preserve `config.php`, `data/`, and `storage/`.
+
 ## 0.5.7 - 2026-07-23
 
 ### Fixed

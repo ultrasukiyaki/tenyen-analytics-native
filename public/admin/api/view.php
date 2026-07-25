@@ -28,5 +28,5 @@ try {
     tyaav_json(['ok'=>true] + $result);
 } catch (Throwable $e) {
     error_log('[Tenyen Analytics admin] ' . $e->getMessage());
-    tyaav_json(['ok'=>false,'message'=>'画面の取得に失敗したで：'.$e->getMessage()], 500);
+    tyaav_json(['ok'=>false,'message'=>$services['translator']->get('common.failed_view')], 500);
 }
