@@ -45,6 +45,8 @@ GeoLite2 MMDBは同梱していません。MaxMindの利用条件に従って取
 
 インストーラーで作成したアカウントでログインします。イベント、キャンペーン、流入元、セッション、既存分析画面を認証・CSRF保護された非同期通信で表示します。
 
+![Tenyen Analytics管理ダッシュボード](screenshot_dashboard.png)
+
 ## イベント・キャンペーン連携
 
 外部リンクとダウンロードは自動計測します。内部リンクは`track_internal_links`、ボタンは`track_buttons`と`data-tenyen-event="name"`、フォームは`track_forms`と同属性を明示した場合だけ計測します。フォーム値、DOM、パスワード、決済情報は収集しません。

@@ -45,6 +45,8 @@ GeoLite2 MMDB files are not included. Obtain them under MaxMind's terms. The GUI
 
 Sign in with the installer-created account. Events, Campaigns, Traffic Sources, Sessions, and the existing analysis views load asynchronously with authenticated, CSRF-protected requests.
 
+![Tenyen Analytics administration dashboard](screenshot_dashboard.png)
+
 ## Event and campaign integration
 
 Automatic external-link and download tracking remains enabled. Internal links can be enabled with `track_internal_links`; buttons require both `track_buttons` and `data-tenyen-event="name"`; forms require `track_forms` and the same explicit attribute. Form values, DOM content, passwords, and payment data are never collected.
