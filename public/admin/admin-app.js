@@ -14,7 +14,7 @@
   const errorBox = shell.querySelector('[data-view-error]');
   const status = shell.querySelector('[data-global-status]');
   const sidebar = shell.querySelector('[data-sidebar]');
-  let request = null, historyInstance = null, sessionsInstance = null, refreshTimer = null, currentPayload = null;
+  let request = null, historyInstance = null, sessionsInstance = null, refreshTimer = null, metadataSearchTimer = null, currentPayload = null;
 
   function initialState() {
     try { return JSON.parse(document.getElementById('tya-initial-state')?.textContent || '{}'); }
@@ -41,6 +41,8 @@
     if (seconds > 0) refreshTimer = setInterval(() => {
       if (document.visibilityState === 'visible') load(new URL(location.href), {push:false, silent:true});
     }, seconds * 1000);
+    loadSavedViewBar();
+    renderMetadataManager();
   }
 
   function updateUrl(url, push) {
@@ -90,6 +92,134 @@
 
   function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[character])); }
 
+  async function metadataRequest(action, {method='GET', data={}, query={}} = {}) {
+    const url = new URL('api/metadata.php', location.href);
+    url.searchParams.set('action', action);
+    Object.entries(query).forEach(([key, value]) => { if (String(value) !== '') url.searchParams.set(key, String(value)); });
+    const options = {method, credentials:'same-origin', cache:'no-store', headers:{Accept:'application/json','X-CSRF-Token':config.csrf || ''}};
+    if (method !== 'GET') {
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify({action, ...data});
+    }
+    const response = await fetch(url, options);
+    const payload = await response.json();
+    if (response.status === 401) { location.reload(); throw new Error('Authentication required.'); }
+    if (!response.ok || payload.ok === false) throw new Error(payload.message || t('metadata.failed'));
+    return payload;
+  }
+
+  function dialogShell(title) {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'metadata-dialog';
+    dialog.innerHTML = `<form method="dialog" class="metadata-dialog-card"><div class="journey-dialog-head"><h2>${escapeHtml(title)}</h2><button class="button secondary" value="cancel">${escapeHtml(t('common.close'))}</button></div><div data-dialog-content></div></form>`;
+    document.body.append(dialog);
+    dialog.addEventListener('close', () => { const opener = dialog._opener; dialog.remove(); opener?.focus?.(); });
+    return dialog;
+  }
+
+  async function editAnnotation(button) {
+    const type = button.dataset.entityType || '';
+    const key = button.dataset.entityKey || '';
+    const dialog = dialogShell(t('common.edit'));
+    dialog._opener = button;
+    const body = dialog.querySelector('[data-dialog-content]');
+    dialog.showModal();
+    try {
+      const [annotationPayload, tagsPayload] = await Promise.all([
+        metadataRequest('annotation', {query:{entity_type:type,entity_key:key}}),
+        metadataRequest('tags')
+      ]);
+      const annotation = annotationPayload.annotation || {};
+      const assigned = new Set((annotation.tags || []).map(tag => String(tag.tag_id)));
+      body.innerHTML = `<p class="note">${escapeHtml(button.dataset.original || key)}</p><div class="field"><label>${escapeHtml(t('metadata.alias'))}<input name="alias" maxlength="120" value="${escapeHtml(annotation.alias || '')}"></label></div><div class="field"><label>${escapeHtml(t('metadata.note'))}<textarea name="note" maxlength="4000" rows="8">${escapeHtml(annotation.note || '')}</textarea></label></div><fieldset><legend>${escapeHtml(t('metadata.tags'))}</legend><div class="tag-options">${tagsPayload.items.map(tag => `<label><input type="checkbox" name="tag_ids" value="${Number(tag.tag_id)}"${assigned.has(String(tag.tag_id))?' checked':''}><span class="tag tag--${escapeHtml(tag.color)}">${escapeHtml(tag.name)}</span></label>`).join('')}</div></fieldset>${type==='organization'?`<label><input type="checkbox" name="watched"${annotation.watched?' checked':''}> ${escapeHtml(t('metadata.watched'))}</label>`:''}<div class="dialog-actions"><button class="button" type="submit">${escapeHtml(t('common.save'))}</button><button class="button secondary" type="button" data-dialog-cancel>${escapeHtml(t('common.cancel'))}</button></div><p aria-live="polite" data-dialog-status></p>`;
+      const form = body.closest('form');
+      body.querySelector('[data-dialog-cancel]').addEventListener('click', () => dialog.close());
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const submit = body.querySelector('[type="submit"]'); submit.disabled = true;
+        try {
+          await metadataRequest('save_annotation', {method:'POST',data:{entity_type:type,entity_key:key,alias:body.querySelector('[name="alias"]').value,note:body.querySelector('[name="note"]').value,watched:body.querySelector('[name="watched"]')?.checked || false,tag_ids:[...body.querySelectorAll('[name="tag_ids"]:checked')].map(input => Number(input.value))}});
+          status.textContent = t('metadata.saved'); dialog.close();
+          load(new URL(location.href), {push:false});
+        } catch (error) { body.querySelector('[data-dialog-status]').textContent = error.message; submit.disabled = false; }
+      });
+      body.querySelector('input')?.focus();
+    } catch (error) { body.textContent = error.message; }
+  }
+
+  async function loadSavedViewBar() {
+    const bar = content.querySelector('[data-saved-view-bar]');
+    if (!bar) return;
+    try {
+      const payload = await metadataRequest('views', {query:{report:bar.dataset.report}});
+      bar._views = payload.items;
+      const select = bar.querySelector('[data-saved-view-select]');
+      payload.items.forEach(view => {
+        const option = document.createElement('option');
+        option.value = view.saved_view_id;
+        option.textContent = `${view.is_default ? '★ ' : ''}${view.name}`;
+        select.append(option);
+      });
+      const defaultView = payload.items.find(view => view.is_default);
+      const currentParams=new URL(location.href).searchParams;
+      if (defaultView && [...currentParams.keys()].every(key=>key==='view') && !sessionStorage.getItem(`tya-default-${bar.dataset.report}`)) {
+        sessionStorage.setItem(`tya-default-${bar.dataset.report}`,'1');
+        const url=new URL(location.href);url.search='';url.searchParams.set('view',bar.dataset.report);
+        Object.entries(defaultView.state||{}).forEach(([key,value])=>{if(Array.isArray(value))value.forEach(item=>url.searchParams.append(`${key}[]`,item));else url.searchParams.set(key,value);});
+        load(url,{push:false});
+      }
+    } catch (error) { status.textContent = error.message; }
+  }
+
+  async function saveCurrentView(button) {
+    const bar = button.closest('[data-saved-view-bar]');
+    const dialog = dialogShell(t('saved_views.save_current')); dialog._opener = button;
+    const body = dialog.querySelector('[data-dialog-content]');
+    body.innerHTML = `<div class="field"><label>${escapeHtml(t('saved_views.name'))}<input name="name" maxlength="120" required></label></div><div class="field"><label>${escapeHtml(t('saved_views.description'))}<textarea name="description" maxlength="500"></textarea></label></div><label><input type="checkbox" name="pinned"> Pinned</label><label><input type="checkbox" name="is_default"> Default</label><div class="dialog-actions"><button class="button" type="submit">${escapeHtml(t('common.save'))}</button><button class="button secondary" type="button" data-dialog-cancel>${escapeHtml(t('common.cancel'))}</button></div><p aria-live="polite" data-dialog-status></p>`;
+    dialog.showModal(); body.querySelector('[name="name"]').focus();
+    body.querySelector('[data-dialog-cancel]').addEventListener('click',()=>dialog.close());
+    body.closest('form').addEventListener('submit',async event=>{
+      event.preventDefault();
+      const state={};new URL(location.href).searchParams.forEach((value,key)=>{if(!['view','page','session','visitor'].includes(key)&&!key.endsWith('[]'))state[key]=value;});
+      content.querySelectorAll('[data-view-filter],[data-sessions-filter],[data-history-form]').forEach(form=>new FormData(form).forEach((value,key)=>{if(String(value)!==''&&!key.endsWith('[]'))state[key]=String(value);}));
+      const visible=[...content.querySelectorAll('[name="history_columns[]"]:checked')].map(input=>input.value);if(visible.length)state.visible_columns=visible;
+      const submit=body.querySelector('[type="submit"]');submit.disabled=true;
+      try{await metadataRequest('save_view',{method:'POST',data:{report:bar.dataset.report,name:body.querySelector('[name="name"]').value,description:body.querySelector('[name="description"]').value,pinned:body.querySelector('[name="pinned"]').checked,is_default:body.querySelector('[name="is_default"]').checked,state}});dialog.close();loadSavedViewBar();status.textContent=t('metadata.saved');}
+      catch(error){body.querySelector('[data-dialog-status]').textContent=error.message;submit.disabled=false;}
+    });
+  }
+
+  async function renderMetadataManager(tab='watched') {
+    const manager=content.querySelector('[data-metadata-manager]');if(!manager)return;
+    manager.dataset.activeTab=tab;
+    manager.querySelectorAll('[data-metadata-tab]').forEach(button=>button.classList.toggle('secondary',button.dataset.metadataTab!==tab));
+    manager.querySelector('[data-create-tag]').hidden=tab!=='tags';
+    const results=manager.querySelector('[data-metadata-results]');const note=manager.querySelector('[data-metadata-status]');
+    note.textContent=t('common.loading');
+    try{
+      if(tab==='tags'){
+        const payload=await metadataRequest('tags',{query:{q:manager.querySelector('[data-metadata-search]').value}});
+        results.innerHTML=`<div class="table-wrap"><table><thead><tr><th>${escapeHtml(t('metadata.tags'))}</th><th>Usage</th><th>${escapeHtml(t('common.edit'))}</th></tr></thead><tbody>${payload.items.map(tag=>`<tr><td><span class="tag tag--${escapeHtml(tag.color)}">${escapeHtml(tag.name)}</span></td><td>${Number(tag.usage_count)}</td><td><button class="button secondary" data-edit-tag data-tag="${escapeHtml(JSON.stringify(tag))}">${escapeHtml(t('common.edit'))}</button> <button class="button secondary" data-delete-tag="${Number(tag.tag_id)}">${escapeHtml(t('common.delete'))}</button></td></tr>`).join('')}</tbody></table></div>`;
+      }else if(tab==='views'){
+        const payload=await metadataRequest('views');
+        results.innerHTML=`<div class="table-wrap"><table><thead><tr><th>${escapeHtml(t('saved_views.name'))}</th><th>Report</th><th>${escapeHtml(t('saved_views.description'))}</th><th>${escapeHtml(t('common.delete'))}</th></tr></thead><tbody>${payload.items.map(view=>`<tr><td>${view.pinned?'★ ':''}${escapeHtml(view.name)}${view.is_default?' (default)':''}</td><td>${escapeHtml(view.report)}</td><td>${escapeHtml(view.description)}</td><td><button class="button secondary" data-delete-view="${Number(view.saved_view_id)}">${escapeHtml(t('common.delete'))}</button></td></tr>`).join('')}</tbody></table></div>`;
+      }else{
+        const payload=await metadataRequest('annotations',{query:{q:manager.querySelector('[data-metadata-search]').value,tag_id:manager.querySelector('[data-metadata-tag]').value,watched:tab==='watched'?'1':''}});
+        results.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Type</th><th>${escapeHtml(t('metadata.alias'))}</th><th>Original key</th><th>${escapeHtml(t('metadata.tags'))}</th><th>${escapeHtml(t('common.edit'))}</th></tr></thead><tbody>${payload.items.map(item=>`<tr><td>${item.watched?'★ ':''}${escapeHtml(item.entity_type)}</td><td>${escapeHtml(item.alias||'—')}</td><td class="journey-long">${escapeHtml(item.entity_key)}</td><td>${(item.tags||[]).map(tag=>`<span class="tag tag--${escapeHtml(tag.color)}">${escapeHtml(tag.name)}</span>`).join(' ')}</td><td><button class="button secondary" data-edit-annotation data-entity-type="${escapeHtml(item.entity_type)}" data-entity-key="${escapeHtml(item.entity_key)}" data-original="${escapeHtml(item.entity_key)}">${escapeHtml(t('common.edit'))}</button></td></tr>`).join('')}</tbody></table></div>`;
+      }
+      note.textContent=t('common.ready');
+    }catch(error){note.textContent=error.message;}
+  }
+
+  function editTag(button, tag={}) {
+    const dialog=dialogShell(tag.tag_id?t('common.edit'):t('metadata.create_tag'));dialog._opener=button;
+    const body=dialog.querySelector('[data-dialog-content]');
+    const colors=['slate','blue','cyan','green','amber','orange','red','purple'];
+    body.innerHTML=`<div class="field"><label>${escapeHtml(t('metadata.tags'))}<input name="name" maxlength="50" required value="${escapeHtml(tag.name||'')}"></label></div><div class="field"><label>Color<select name="color">${colors.map(color=>`<option value="${color}"${tag.color===color?' selected':''}>${color}</option>`).join('')}</select></label></div><div class="dialog-actions"><button class="button" type="submit">${escapeHtml(t('common.save'))}</button><button class="button secondary" type="button" data-dialog-cancel>${escapeHtml(t('common.cancel'))}</button></div><p aria-live="polite" data-dialog-status></p>`;
+    dialog.showModal();body.querySelector('input').focus();body.querySelector('[data-dialog-cancel]').addEventListener('click',()=>dialog.close());
+    body.closest('form').addEventListener('submit',async event=>{event.preventDefault();const submit=body.querySelector('[type="submit"]');submit.disabled=true;try{await metadataRequest('save_tag',{method:'POST',data:{tag_id:tag.tag_id||null,name:body.querySelector('[name="name"]').value,color:body.querySelector('[name="color"]').value}});dialog.close();renderMetadataManager('tags');}catch(error){body.querySelector('[data-dialog-status]').textContent=error.message;submit.disabled=false;}});
+  }
+
   document.addEventListener('click', async event => {
     const link = event.target.closest('[data-view-link]');
     if (link && link.origin === location.origin) {
@@ -100,6 +230,21 @@
     }
     if (event.target.closest('[data-menu-toggle]')) { shell.classList.toggle('menu-open'); return; }
     if (event.target.closest('[data-retry]')) { load(new URL(location.href), {push:false}); return; }
+    const annotationButton=event.target.closest('[data-edit-annotation]');
+    if(annotationButton){editAnnotation(annotationButton);return;}
+    const tab=event.target.closest('[data-metadata-tab]');
+    if(tab){renderMetadataManager(tab.dataset.metadataTab);return;}
+    const createTag=event.target.closest('[data-create-tag]');if(createTag){editTag(createTag);return;}
+    const editTagButton=event.target.closest('[data-edit-tag]');if(editTagButton){editTag(editTagButton,JSON.parse(editTagButton.dataset.tag));return;}
+    if(event.target.closest('[data-save-current-view]')){saveCurrentView(event.target.closest('[data-save-current-view]'));return;}
+    if(event.target.closest('[data-load-saved-view]')){
+      const bar=event.target.closest('[data-saved-view-bar]');const id=bar.querySelector('[data-saved-view-select]').value;
+      const saved=(bar._views||[]).find(view=>String(view.saved_view_id)===id);if(saved){const url=new URL(location.href);url.search='';url.searchParams.set('view',bar.dataset.report);Object.entries(saved.state||{}).forEach(([key,value])=>{if(Array.isArray(value))value.forEach(item=>url.searchParams.append(`${key}[]`,item));else url.searchParams.set(key,value);});load(url);}return;
+    }
+    const deleteTag=event.target.closest('[data-delete-tag]');
+    if(deleteTag&&confirm(t('common.confirm_delete'))){await metadataRequest('delete_tag',{method:'POST',data:{tag_id:Number(deleteTag.dataset.deleteTag)}});renderMetadataManager('tags');return;}
+    const deleteView=event.target.closest('[data-delete-view]');
+    if(deleteView&&confirm(t('common.confirm_delete'))){await metadataRequest('delete_view',{method:'POST',data:{saved_view_id:Number(deleteView.dataset.deleteView)}});renderMetadataManager('views');return;}
     const copy = event.target.closest('[data-copy-code]');
     if (copy) {
       const text = copy.parentElement?.querySelector('code')?.textContent || '';
@@ -134,12 +279,19 @@
     new FormData(form).forEach((value, key) => { if (String(value) !== '') url.searchParams.set(key, String(value)); });
     load(url);
   });
+  content.addEventListener('input',event=>{
+    if(!event.target.matches('[data-metadata-search]'))return;
+    if(metadataSearchTimer)clearTimeout(metadataSearchTimer);
+    metadataSearchTimer=setTimeout(()=>renderMetadataManager(event.target.closest('[data-metadata-manager]')?.dataset.activeTab||'watched'),250);
+  });
+  content.addEventListener('change',event=>{if(event.target.matches('[data-metadata-tag]'))renderMetadataManager(event.target.closest('[data-metadata-manager]')?.dataset.activeTab||'watched');});
 
   window.addEventListener('popstate', () => load(new URL(location.href), {push:false}));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Number(currentPayload?.refresh_seconds || 0) > 0) load(new URL(location.href), {push:false, silent:true}); });
 
   const initial = initialState();
   currentPayload = initial; setActive(initial.view || 'dashboard'); startWidgets(initial);
+  loadSavedViewBar(); renderMetadataManager();
 })();
 
 (() => {

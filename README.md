@@ -47,6 +47,16 @@ Sign in with the installer-created account. Events, Campaigns, Traffic Sources, 
 
 ![Tenyen Analytics administration dashboard](screenshot_dashboard.png)
 
+## Administrator knowledge layer
+
+Version 0.6.2 adds site-scoped administrator aliases (120 characters), plain-text notes (4,000 characters), reusable case-insensitive tags (50 characters), organization watch status, and private saved views. Supported annotation identities are numeric ASN, the existing opaque anonymous-visitor ID, canonical stored content path, normalized referrer domain, a deterministic JSON tuple of the five UTM dimensions, and external target domain. Aliases are displayed alongside—not instead of—collected values, and metadata never changes raw analytics facts.
+
+Watching an ASN only marks and filters it; it does not send notifications or score a lead. ASN data identifies the organization to which an address is registered and does not prove a visitor’s employer or personal identity. Content annotations remain keyed to the stored normalized path if a URL later changes; orphaned annotations remain available in Knowledge for review.
+
+Saved views are private to the configured administrator using a forward-compatible owner key. They store only report-allowlisted filters, relative or absolute date settings, Human/Bot selection, sorting, page size, visible columns, tag/watch filters, pin state, and one optional default per report. Page numbers, authentication state, CSRF values, tokens, secrets, decrypted IPs, SQL, and response bodies are never saved. Relative dates are recalculated when loaded; custom dates stay absolute.
+
+See [Administrator metadata and saved views](docs/ADMIN_METADATA.md) for entity-key, schema, index, orphan, and upgrade details.
+
 ## Event and campaign integration
 
 Automatic external-link and download tracking remains enabled. Internal links can be enabled with `track_internal_links`; buttons require both `track_buttons` and `data-tenyen-event="name"`; forms require `track_forms` and the same explicit attribute. Form values, DOM content, passwords, and payment data are never collected.
@@ -63,7 +73,7 @@ Run `php bin/doctor.php` for diagnostics, `php bin/cleanup.php` for retention cl
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Version 0.6.1 runs an idempotent migration that adds attribution/event columns and three indexes. Existing v0.6.0 configurations, installed lock, credentials, tokens, keys, MMDB files, and historical events remain supported.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.6.1 to v0.6.2 runs an idempotent migration that creates annotation, tag, assignment, and saved-view tables without rewriting analytics. Existing configuration, installation lock, administrator/database credentials, site token, encryption/HMAC keys, language preference, MMDB files, events, and sessions remain supported. Re-running the migration preserves existing metadata.
 
 Bounce rate remains one-page entry sessions divided by entry sessions. Click rate is sessions with a matching click from a source page divided by sessions containing a qualifying pageview of that source page; a zero denominator returns 0%. Notification, retention-management, export, aggregation, multi-site, roles, and a full exclusion manager are deferred.
 

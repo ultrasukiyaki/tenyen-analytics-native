@@ -10,6 +10,7 @@ use Tenyen\Analytics\RuntimePreferences;
 use Tenyen\Analytics\Translator;
 use Tenyen\Analytics\TrafficAttribution;
 use Tenyen\Analytics\Payload;
+use Tenyen\Analytics\AdminMetadata;
 
 $failures = 0;
 $test = static function (bool $condition, string $message) use (&$failures): void {
@@ -51,7 +52,7 @@ foreach ($samples as $organization => $category) {
 }
 
 $adminViews = file_get_contents(dirname(__DIR__) . '/app/admin-views.php');
-foreach (['dashboard','realtime','history','sessions','events','campaigns','content','referrers','organizations','audience','engagement','system','settings'] as $view) {
+foreach (['dashboard','realtime','history','sessions','events','campaigns','content','referrers','organizations','metadata','audience','engagement','system','settings'] as $view) {
     $test(str_contains((string)$adminViews, "'{$view}'"), "admin view exists: {$view}");
 }
 
@@ -61,7 +62,7 @@ $test(LocaleResolver::resolve(['app' => []], null, null, 'en') === 'en', 'old co
 
 $versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md', 'CHANGELOG.ja.md'];
 foreach ($versionFiles as $file) {
-    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.6.1'), "version reference: {$file}");
+    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.6.2'), "version reference: {$file}");
 }
 
 $english = require dirname(__DIR__) . '/app/i18n/en.php';
@@ -73,6 +74,29 @@ $test($en->get('dashboard.description') === 'Get a quick overview of activity ac
 $test($ja->get('dashboard.description') === 'サイト全体の動きを簡潔に確認できます。', 'standard-Japanese dashboard description');
 $test($en->get('nav.sessions') === 'Sessions' && $ja->get('nav.sessions') === 'セッション', 'bilingual Sessions navigation');
 $test($en->get('nav.events') === 'Events' && $ja->get('nav.events') === 'イベント', 'bilingual Events navigation');
+$test($en->get('nav.metadata') === 'Knowledge' && $ja->get('nav.metadata') === 'ナレッジ', 'bilingual Knowledge navigation');
+
+$test(AdminMetadata::entityKey('organization', '64500') === '64500', 'numeric ASN annotation identity');
+$test(AdminMetadata::entityKey('visitor', 'visitor_abc-123') === 'visitor_abc-123', 'opaque anonymous visitor identity');
+$test(AdminMetadata::entityKey('content', '/articles/example') === '/articles/example', 'content path identity');
+$test(AdminMetadata::entityKey('referrer', 'Example.COM.') === 'example.com', 'normalized referrer-domain identity');
+$campaignKey = json_encode(['source'=>'newsletter','medium'=>'email','campaign'=>'launch','content'=>'hero','term'=>'analytics'], JSON_UNESCAPED_SLASHES);
+$test(AdminMetadata::entityKey('campaign', (string)$campaignKey) === $campaignKey, 'deterministic structured campaign identity');
+$test(AdminMetadata::entityKey('external_target', 'Docs.Example.COM') === 'docs.example.com', 'normalized external target domain');
+foreach ([['unsupported','key'],['organization','not-an-asn'],['visitor','bad visitor']] as [$type,$key]) {
+    $rejected=false;try{AdminMetadata::entityKey($type,$key);}catch(InvalidArgumentException){$rejected=true;}
+    $test($rejected, "invalid metadata identity rejected: {$type}");
+}
+
+$metadataService=(string)file_get_contents(dirname(__DIR__).'/app/core/src/AdminMetadata.php');
+$metadataApi=(string)file_get_contents(dirname(__DIR__).'/public/admin/api/metadata.php');
+$schema=(string)file_get_contents(dirname(__DIR__).'/app/schema.php');
+foreach(['tya_annotations','tya_tags','tya_annotation_tags','tya_saved_views'] as $table)$test(str_contains($schema,$table),"fresh schema includes metadata table: {$table}");
+$test(str_contains($metadataApi,'tyaa_require_auth')&&str_contains($metadataApi,'tyaa_verify_csrf'),'metadata API requires authentication and CSRF');
+$test(str_contains($metadataService,'ON DUPLICATE KEY UPDATE')&&str_contains($metadataService,'INSERT IGNORE'),'annotation and tag assignment writes are idempotent');
+$test(str_contains($metadataService,'self::VIEW_KEYS')&&str_contains($metadataService,'unsupported keys'),'saved-view state uses report allowlists');
+$test(str_contains($metadataService,"unset(\$result['page'],\$result['csrf'],\$result['session_id'],\$result['site_token'])"),'saved views remove transient and secret keys');
+$test(!str_contains((string)file_get_contents(dirname(__DIR__).'/public/collect.php'),'AdminMetadata'),'public collector does not expose administrator metadata');
 
 $test(TrafficAttribution::classify('/landing', '', 'https://example.com')['channel'] === 'Direct', 'direct traffic attribution');
 $test(TrafficAttribution::classify('/landing', 'https://example.com/from', 'https://example.com')['channel'] === 'Internal', 'internal traffic attribution');

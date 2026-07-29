@@ -57,4 +57,58 @@ CREATE TABLE IF NOT EXISTS tya_events (
     ,KEY campaign_time (utm_campaign, occurred_at)
     ,KEY event_name_time (event_name, occurred_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tya_annotations (
+    annotation_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    entity_type VARCHAR(32) NOT NULL,
+    entity_hash BINARY(32) NOT NULL,
+    entity_key TEXT NOT NULL,
+    alias VARCHAR(120) NOT NULL DEFAULT '',
+    note TEXT NOT NULL,
+    watched TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (annotation_id),
+    UNIQUE KEY entity_identity (entity_type, entity_hash),
+    KEY watched_type_updated (watched, entity_type, updated_at),
+    KEY entity_updated (entity_type, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tya_tags (
+    tag_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    normalized_name VARCHAR(191) NOT NULL,
+    color VARCHAR(16) NOT NULL DEFAULT 'slate',
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (tag_id),
+    UNIQUE KEY normalized_name (normalized_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tya_annotation_tags (
+    annotation_id BIGINT UNSIGNED NOT NULL,
+    tag_id BIGINT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (annotation_id, tag_id),
+    KEY tag_annotation (tag_id, annotation_id),
+    CONSTRAINT tya_annotation_tags_annotation FOREIGN KEY (annotation_id) REFERENCES tya_annotations(annotation_id) ON DELETE CASCADE,
+    CONSTRAINT tya_annotation_tags_tag FOREIGN KEY (tag_id) REFERENCES tya_tags(tag_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tya_saved_views (
+    saved_view_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    owner_key VARCHAR(191) NOT NULL,
+    report VARCHAR(32) NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    description VARCHAR(500) NOT NULL DEFAULT '',
+    state_json TEXT NOT NULL,
+    pinned TINYINT(1) NOT NULL DEFAULT 0,
+    is_default TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (saved_view_id),
+    KEY owner_report (owner_key, report),
+    KEY owner_pinned (owner_key, pinned, updated_at),
+    KEY owner_default (owner_key, report, is_default)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL;

@@ -2,6 +2,30 @@ English | [日本語](CHANGELOG.ja.md)
 
 # Changelog
 
+## 0.6.2 - 2026-07-30
+
+### Added
+
+- Added administrator aliases, plain-text notes, and reusable tags for organizations, anonymous visitors, content, referrer domains, campaigns, and external target domains.
+- Added organization/ASN watch status, filtering, badges, inline editing, and centralized Knowledge management.
+- Added private, versioned, report-allowlisted saved views for Access History, Sessions, Content, Organizations, Traffic Sources, Campaigns, and Events.
+
+### Changed
+
+- Integrated metadata editing with existing asynchronous report routing while preserving browser history and current report filters.
+- Added matching English and Japanese documentation and interface resources for the administrator knowledge layer.
+
+### Security
+
+- Added authenticated, CSRF-protected metadata operations with entity allowlists, bounded plain text, prepared SQL, preset tag colors, owner isolation, and saved-state key validation.
+- Administrator metadata remains outside the public tracker and collector and never contains decrypted IPs, secrets, arbitrary SQL, or authentication state.
+
+### Compatibility
+
+- Adds `tya_annotations`, `tya_tags`, `tya_annotation_tags`, and `tya_saved_views` plus identity, watch, relation, owner/report, pin, default, and timestamp indexes through an idempotent migration.
+- Upgrades from v0.6.1 preserve `config.php`, `data/`, `storage/`, credentials, keys, tokens, MMDB files, language preference, sessions, events, and all analytics facts.
+- Notifications, exclusion management, export, retention UI, daily aggregates, and lead scoring remain deferred.
+
 ## 0.6.1 - 2026-07-26
 
 ### Added
