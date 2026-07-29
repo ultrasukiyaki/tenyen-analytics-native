@@ -35,5 +35,14 @@ final class SchemaMigrator
         if (!in_array('channel_time', $indexes, true)) $pdo->exec('ALTER TABLE tya_events ADD KEY channel_time (traffic_channel, occurred_at)');
         if (!in_array('campaign_time', $indexes, true)) $pdo->exec('ALTER TABLE tya_events ADD KEY campaign_time (utm_campaign, occurred_at)');
         if (!in_array('event_name_time', $indexes, true)) $pdo->exec('ALTER TABLE tya_events ADD KEY event_name_time (event_name, occurred_at)');
+        self::metadataTables($pdo);
+    }
+
+    private static function metadataTables(PDO $pdo): void
+    {
+        $schema = require dirname(__DIR__, 2) . '/schema.php';
+        foreach (array_slice(array_filter(array_map('trim', explode(';', $schema))), 1) as $statement) {
+            if (str_starts_with($statement, 'CREATE TABLE IF NOT EXISTS tya_')) $pdo->exec($statement);
+        }
     }
 }

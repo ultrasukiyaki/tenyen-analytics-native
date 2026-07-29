@@ -50,10 +50,17 @@
       return result;
     }
     function loadPrefs(){try{return normalize(JSON.parse(localStorage.getItem(storageKey)||'null'));}catch(_){return normalize(null);}}
-    let prefs = loadPrefs();
+    const initialState = config.initialState && typeof config.initialState === 'object' ? config.initialState : {};
+    let prefs = normalize(Object.assign({}, loadPrefs(), {
+      perPage: initialState.per_page || undefined,
+      actor: initialState.actor || undefined,
+      event: initialState.event || undefined,
+      order: initialState.order || undefined,
+      visibleColumns: Array.isArray(initialState.visible_columns) ? initialState.visible_columns : undefined
+    }));
     function savePrefs(){try{localStorage.setItem(storageKey,JSON.stringify(prefs));}catch(_){}}
     function setOptions(select,items,label){if(!select)return;const previous=select.value;select.textContent='';const all=document.createElement('option');all.value='';all.textContent=label;select.appendChild(all);(items||[]).forEach(item=>{const option=document.createElement('option');option.value=String(item.value??item);option.textContent=String(item.label??item.value??item);select.appendChild(option)});if([...select.options].some(option=>option.value===previous))select.value=previous;}
-    function populate(){const options=config.options||{};setOptions(form.elements.country,options.countries,'All countries');setOptions(form.elements.browser,options.browsers,'All browsers');setOptions(form.elements.os,options.os,'All operating systems');setOptions(form.elements.device,options.devices,'All devices');}
+    function populate(){const options=config.options||{};setOptions(form.elements.country,options.countries,'All countries');setOptions(form.elements.browser,options.browsers,'All browsers');setOptions(form.elements.os,options.os,'All operating systems');setOptions(form.elements.device,options.devices,'All devices');['q','from','to','country','browser','os','device'].forEach(name=>{if(form.elements[name]&&typeof initialState[name]==='string')form.elements[name].value=initialState[name];});}
     function syncForm(){form.elements.per_page.value=String(prefs.perPage);form.elements.actor.value=prefs.actor;form.elements.event.value=prefs.event;form.elements.order.value=prefs.order;}
     function syncSettings(){const density=settings?.querySelector(`[name="history_density"][value="${prefs.density}"]`);if(density)density.checked=true;const map={history_collapsed:'collapsed',history_wrap:'wrap',history_sticky:'stickyHeader'};Object.entries(map).forEach(([name,key])=>{const input=settings?.querySelector(`[name="${name}"]`);if(input)input.checked=Boolean(prefs[key]);});const auto=settings?.querySelector('[name="history_auto_refresh"]');if(auto)auto.value=String(prefs.autoRefresh);settings?.querySelectorAll('[name="history_columns[]"]').forEach(input=>input.checked=prefs.visibleColumns.includes(input.value));}
     function readSettings(){const density=settings?.querySelector('[name="history_density"]:checked');const columns=[...(settings?.querySelectorAll('[name="history_columns[]"]:checked')||[])].map(input=>input.value);prefs=normalize(Object.assign({},prefs,{density:density?.value||'compact',collapsed:Boolean(settings?.querySelector('[name="history_collapsed"]')?.checked),wrap:Boolean(settings?.querySelector('[name="history_wrap"]')?.checked),stickyHeader:Boolean(settings?.querySelector('[name="history_sticky"]')?.checked),autoRefresh:Number(settings?.querySelector('[name="history_auto_refresh"]')?.value||0),visibleColumns:columns,perPage:Number(form.elements.per_page.value),actor:form.elements.actor.value,event:form.elements.event.value,order:form.elements.order.value}));}

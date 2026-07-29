@@ -116,7 +116,9 @@ final class Installer
         /** @var array{host:string,port:int,name:string,user:string,password:string} $database */
         $pdo = $this->connect($database);
         $schema = require $this->root . '/app/schema.php';
-        $pdo->exec($schema);
+        foreach (array_filter(array_map('trim', explode(';', $schema))) as $statement) {
+            $pdo->exec($statement);
+        }
 
         $publicUrl = rtrim((string)($settings['public_url'] ?? ''), '/');
         $siteUrl = rtrim((string)($settings['site_url'] ?? ''), '/');
@@ -181,7 +183,7 @@ final class Installer
             throw new RuntimeException('storage/ratelimitを作成できません。');
         }
         $lockPayload = json_encode([
-            'version' => '0.6.1',
+            'version' => '0.6.2',
             'installed_at' => gmdate(DATE_ATOM),
             'public_url' => $publicUrl,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
