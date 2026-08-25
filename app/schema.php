@@ -136,4 +136,63 @@ CREATE TABLE IF NOT EXISTS tya_event_exclusions (
     CONSTRAINT tya_event_exclusions_event FOREIGN KEY (event_id) REFERENCES tya_events(event_id) ON DELETE CASCADE,
     CONSTRAINT tya_event_exclusions_rule FOREIGN KEY (rule_id) REFERENCES tya_exclusion_rules(rule_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tya_daily_metrics (
+    metric_day DATE NOT NULL,
+    actor VARCHAR(8) NOT NULL,
+    pageviews BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    estimated_visitors BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    sessions BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    bounces BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    entries BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    exits BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    engaged_time_ms_sum BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    engaged_samples BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    scroll_depth_sum BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    scroll_samples BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    events BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    source_event_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    source_event_max_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    built_at DATETIME NOT NULL,
+    PRIMARY KEY (metric_day, actor),
+    KEY actor_day (actor, metric_day)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tya_daily_dimensions (
+    metric_day DATE NOT NULL,
+    actor VARCHAR(8) NOT NULL,
+    dimension_type VARCHAR(24) NOT NULL,
+    dimension_hash BINARY(32) NOT NULL,
+    dimension_key VARCHAR(512) NOT NULL,
+    dimension_label VARCHAR(512) NOT NULL DEFAULT '',
+    pageviews BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    estimated_visitors BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    sessions BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    events BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    entries BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    exits BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    bounces BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    engaged_time_ms_sum BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    engaged_samples BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    scroll_depth_sum BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    scroll_samples BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    last_seen DATETIME NULL,
+    PRIMARY KEY (metric_day, actor, dimension_type, dimension_hash),
+    KEY dimension_range (dimension_type, actor, metric_day),
+    KEY dimension_key_range (dimension_type, dimension_hash, metric_day)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tya_aggregate_state (
+    state_key VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    range_start DATE NULL,
+    range_end DATE NULL,
+    next_day DATE NULL,
+    first_complete_day DATE NULL,
+    last_complete_day DATE NULL,
+    last_source_event_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    error_message VARCHAR(255) NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (state_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL;

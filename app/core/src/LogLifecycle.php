@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tenyen\Analytics;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use InvalidArgumentException;
 use PDO;
 use RuntimeException;
@@ -12,7 +14,7 @@ final class LogLifecycle
 {
     public const PRESETS = [30,90,180,365];
 
-    public function __construct(private readonly PDO $pdo,private readonly string $statePath,private readonly int $configDays=90){}
+    public function __construct(private readonly PDO $pdo,private readonly string $statePath,private readonly int $configDays=90,private readonly string $timezone='UTC'){}
 
     public static function validateRetention(mixed $value): ?int
     {
@@ -36,14 +38,15 @@ final class LogLifecycle
         $state=$this->state();$state['retention_days']=self::validateRetention($value);$this->write($state);return $state;
     }
 
-    /** @return array{cutoff:?string,events:int,sessions:int,retention_days:?int} */
+    /** @return array{cutoff:?string,events:int,sessions:int,retention_days:?int,aggregate_coverage:?array} */
     public function preview(?int $days=null): array
     {
         if(func_num_args()===0)$days=$this->state()['retention_days'];
-        if($days===null)return ['cutoff'=>null,'events'=>0,'sessions'=>0,'retention_days'=>null];
-        $cutoff=gmdate('Y-m-d H:i:s',time()-$days*86400);
+        if($days===null)return ['cutoff'=>null,'events'=>0,'sessions'=>0,'retention_days'=>null,'aggregate_coverage'=>null];
+        $cutoff=$this->cutoff((int)$days);
         $stmt=$this->pdo->prepare("SELECT COUNT(*) events,COUNT(DISTINCT NULLIF(session_id,'')) sessions FROM tya_events WHERE occurred_at<?");$stmt->execute([$cutoff]);$row=$stmt->fetch()?:[];
-        return ['cutoff'=>$cutoff,'events'=>(int)($row['events']??0),'sessions'=>(int)($row['sessions']??0),'retention_days'=>$days];
+        $coverage=(new DailyAggregation($this->pdo,new DateTimeZone($this->timezone)))->verifyCoverage($cutoff);
+        return ['cutoff'=>$cutoff,'events'=>(int)($row['events']??0),'sessions'=>(int)($row['sessions']??0),'retention_days'=>$days,'aggregate_coverage'=>$coverage];
     }
 
     /** @return array<string,mixed> */
@@ -54,7 +57,9 @@ final class LogLifecycle
         $lock=fopen($directory.'/cleanup.lock','c+');if($lock===false||!flock($lock,LOCK_EX|LOCK_NB))throw new RuntimeException('Cleanup is already running.');
         try{
             $state=$this->state();$days=$state['retention_days'];if($days===null)throw new InvalidArgumentException('Retention is unlimited; cleanup has nothing to delete.');
-            $cutoff=(($state['cleanup']['status']??'')==='running'&&!empty($state['cleanup']['cutoff']))?(string)$state['cleanup']['cutoff']:gmdate('Y-m-d H:i:s',time()-(int)$days*86400);
+            $cutoff=(($state['cleanup']['status']??'')==='running'&&!empty($state['cleanup']['cutoff']))?(string)$state['cleanup']['cutoff']:$this->cutoff((int)$days);
+            $coverage=(new DailyAggregation($this->pdo,new DateTimeZone($this->timezone)))->verifyCoverage($cutoff);
+            if(!$coverage['complete'])throw new InvalidArgumentException((string)$coverage['reason']);
             $deleted=0;$state['cleanup']=array_replace($state['cleanup'],['status'=>'running','cutoff'=>$cutoff,'last_attempt'=>gmdate(DATE_ATOM),'error'=>null]);$this->write($state);
             for($batch=0;$batch<$maxBatches;$batch++){
                 $select=$this->pdo->prepare("SELECT event_id FROM tya_events WHERE occurred_at<? ORDER BY event_id LIMIT {$batchSize}");$select->execute([$cutoff]);$ids=array_map('intval',$select->fetchAll(PDO::FETCH_COLUMN));if(!$ids)break;
@@ -75,7 +80,8 @@ final class LogLifecycle
         $monthly=$this->pdo->query("SELECT DATE_FORMAT(occurred_at,'%Y-%m') month,COUNT(*) events FROM tya_events GROUP BY DATE_FORMAT(occurred_at,'%Y-%m') ORDER BY month DESC LIMIT 24")->fetchAll();
         $database=(string)$this->pdo->query('SELECT DATABASE()')->fetchColumn();$size=0;$tableSize=0;
         if($database!==''){$stmt=$this->pdo->prepare('SELECT COALESCE(SUM(DATA_LENGTH+INDEX_LENGTH),0),COALESCE(SUM(CASE WHEN TABLE_NAME=\'tya_events\' THEN DATA_LENGTH+INDEX_LENGTH ELSE 0 END),0) FROM information_schema.TABLES WHERE TABLE_SCHEMA=?');$stmt->execute([$database]);$sizes=$stmt->fetch(PDO::FETCH_NUM)?:[0,0];$size=(int)$sizes[0];$tableSize=(int)$sizes[1];}
-        return ['database_bytes'=>$size,'event_table_bytes'=>$tableSize,'events'=>(int)($summary['events']??0),'sessions'=>(int)($summary['sessions']??0),'oldest'=>$summary['oldest']??null,'newest'=>$summary['newest']??null,'monthly'=>$monthly,'state'=>$this->state()];
+        $aggregation=(new DailyAggregation($this->pdo,new DateTimeZone($this->timezone)))->status();
+        return ['database_bytes'=>$size,'event_table_bytes'=>$tableSize,'events'=>(int)($summary['events']??0),'sessions'=>(int)($summary['sessions']??0),'oldest'=>$summary['oldest']??null,'newest'=>$summary['newest']??null,'monthly'=>$monthly,'state'=>$this->state(),'aggregation'=>$aggregation];
     }
 
     public function due(): bool
@@ -87,6 +93,11 @@ final class LogLifecycle
     {
         $directory=dirname($this->statePath);if(!is_dir($directory)||!is_writable($directory))throw new RuntimeException('Storage directory is not writable.');$temporary=$this->statePath.'.tmp-'.bin2hex(random_bytes(6));$json=json_encode($state,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
         if(file_put_contents($temporary,$json,LOCK_EX)===false)throw new RuntimeException('Could not write lifecycle state.');@chmod($temporary,0600);if(!@rename($temporary,$this->statePath)){@unlink($temporary);throw new RuntimeException('Could not save lifecycle state.');}
+    }
+    private function cutoff(int $days): string
+    {
+        $local=(new DateTimeImmutable('today',new DateTimeZone($this->timezone)))->modify('-'.$days.' days');
+        return $local->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
     }
     private static function safeError(\Throwable $e): string { return match(true){$e instanceof InvalidArgumentException=>$e->getMessage(),default=>'Cleanup failed. Check database and storage permissions.'}; }
 }

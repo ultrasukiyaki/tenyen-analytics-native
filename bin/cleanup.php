@@ -4,7 +4,7 @@
 declare(strict_types=1);
 
 $root=dirname(__DIR__);$services=require $root.'/app/bootstrap.php';$config=$services['config'];
-$lifecycle=new \Tenyen\Analytics\LogLifecycle($services['pdo'],$root.'/storage/lifecycle.json',(int)($config['app']['retention_days']??90));
+$lifecycle=new \Tenyen\Analytics\LogLifecycle($services['pdo'],$root.'/storage/lifecycle.json',(int)($config['app']['retention_days']??90),(string)($config['app']['timezone']??'Asia/Tokyo'));
 $command=(string)($argv[1]??'run');
 try{
     if($command==='preview'){echo json_encode($lifecycle->preview(),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n";exit;}
