@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Tenyen\Analytics\Installer;
+use Tenyen\Analytics\Crypto;
+use Tenyen\Analytics\GeoLite2Updater;
 
 $root = dirname(__DIR__, 3);
 $configFile = $root . '/config.php';
@@ -159,6 +161,7 @@ if (!@rename($partPath, $destination)) {
 }
 @chmod($destination, 0600);
 @unlink($statePath);
+try{$app=$config['app']??[];$crypto=new Crypto((string)($app['encryption_secret']??''),(string)($app['hash_secret']??''));(new GeoLite2Updater($root,$config,$crypto))->recordManual($kind);}catch(Throwable){error_log('[Tenyen Analytics GeoLite2] manual upload status update failed');}
 
 mmdb_json([
     'ok' => true,

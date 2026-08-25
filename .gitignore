@@ -16,6 +16,8 @@ Thumbs.db
 /config.local.php
 *.local.php
 *.local
+.agents/
+.codex/
 
 # PHP / Composer dependencies and tool caches
 /vendor/

@@ -18,6 +18,7 @@ The application stores analytics on infrastructure you control. It does not use 
 - Collection and analysis exclusion rules with deterministic diagnostics
 - Streaming CSV/JSON export, retention-safe cleanup controls, and storage diagnostics
 - Retention-safe daily aggregates with resumable rebuilds and hybrid long-range reports
+- Independent GeoLite2 City/ASN health, manual upload, and safe scheduled updates
 - English and standard-Japanese interfaces
 
 ## Requirements
@@ -72,6 +73,10 @@ Version 0.7.0 streams filtered access logs, sessions, content, organizations, tr
 
 Version 0.7.1 stores completed local-day totals and bounded content, channel, referrer, campaign, country, ASN/organization, and event dimensions. Dashboard date reports combine covered aggregate days with uncovered raw days at a non-overlapping boundary. Rebuilds are idempotent, checkpointed, limited to 31 days per invocation, and resumable. Cleanup is blocked until every eligible raw day has aggregate coverage. See [Daily aggregation and performance](docs/DAILY_AGGREGATION.md).
 
+## GeoLite2 maintenance
+
+Version 0.8.0 adds independent City and ASN health, encrypted MaxMind license-key storage, conservative weekly scheduling, manual update-now, locking, retry backoff, validated archive extraction, and atomic MMDB replacement. A failed update keeps the current valid database, and manual upload remains available. See [GeoLite2 automatic updates](docs/GEOLITE2_UPDATES.md).
+
 ## Event and campaign integration
 
 Automatic external-link and download tracking remains enabled. Internal links can be enabled with `track_internal_links`; buttons require both `track_buttons` and `data-tenyen-event="name"`; forms require `track_forms` and the same explicit attribute. Form values, DOM content, passwords, and payment data are never collected.
@@ -84,11 +89,11 @@ Channels are Direct, Organic Search, Social, Referral, Internal, Campaign, and U
 
 ## CLI tools
 
-Run `php bin/doctor.php` for diagnostics, `php bin/aggregate.php incremental` for daily rollups, `php bin/cleanup.php` for retention cleanup, `php bin/generate-secrets.php` for credentials, or `php bin/install.php` for CLI installation guidance.
+Run `php bin/doctor.php` for diagnostics, `php bin/aggregate.php incremental` for daily rollups, `php bin/geolite2-update.php scheduled` for due GeoLite2 updates, `php bin/cleanup.php` for retention cleanup, or the existing credential/install tools.
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.7.0 to v0.7.1 adds `tya_daily_metrics`, `tya_daily_dimensions`, and `tya_aggregate_state` with purpose-built primary/range indexes. Existing configuration, installation lock, administrator/database credentials, site token, encryption/HMAC keys, language preference, MMDB files, events, sessions, lifecycle state, exclusion rules, metadata, tags, and saved views remain supported. Run the initial aggregate before cleanup.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.7.1 to v0.8.0 changes no database schema. Existing configuration, installation lock, credentials, keys, language preference, MMDB files, analytics, aggregates, exclusions, metadata, and lifecycle state remain supported. GeoLite2 credentials and update state are created under protected `storage/` only after configuration.
 
 Bounce rate remains one-page entry sessions divided by entry sessions. Engagement averages are calculated from preserved sums and sample counts, never by averaging daily averages. Daily distinct visitors are estimates and can count the same anonymous browser again on another day. Notifications, multi-site, and roles remain deferred.
 

@@ -15,6 +15,7 @@ use Tenyen\Analytics\ExclusionRules;
 use Tenyen\Analytics\AnalyticsExport;
 use Tenyen\Analytics\LogLifecycle;
 use Tenyen\Analytics\DailyAggregation;
+use Tenyen\Analytics\GeoLite2Updater;
 
 $failures = 0;
 $test = static function (bool $condition, string $message) use (&$failures): void {
@@ -66,7 +67,7 @@ $test(LocaleResolver::resolve(['app' => []], null, null, 'en') === 'en', 'old co
 
 $versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md', 'CHANGELOG.ja.md'];
 foreach ($versionFiles as $file) {
-    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.7.1'), "version reference: {$file}");
+    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.8.0'), "version reference: {$file}");
 }
 
 $english = require dirname(__DIR__) . '/app/i18n/en.php';
@@ -182,6 +183,32 @@ $longRange=DailyAggregation::partitionDays('2024-08-26','2026-08-25','2024-08-26
 $test(str_contains($schema,'tya_daily_metrics')&&str_contains($schema,'tya_aggregate_state'),'baseline upgrade creates aggregate tables non-destructively');
 $test(str_contains($lifecycleService,'Daily aggregate coverage is incomplete')||str_contains($aggregationService,'Daily aggregate coverage is incomplete'),'historical totals are required before raw cleanup');
 $test(str_contains($lifecycleApi,'aggregate_range')&&str_contains($lifecycleApi,'tyaa_require_auth')&&str_contains($lifecycleApi,'tyaa_verify_csrf'),'aggregate maintenance API requires administrator authentication and CSRF');
+
+$geoUpdater=(string)file_get_contents(dirname(__DIR__).'/app/core/src/GeoLite2Updater.php');$geoApi=(string)file_get_contents(dirname(__DIR__).'/public/admin/api/geolite2.php');$geoCli=(string)file_get_contents(dirname(__DIR__).'/bin/geolite2-update.php');$manualUpload=(string)file_get_contents(dirname(__DIR__).'/public/admin/api/mmdb-upload.php');$buildScript=(string)file_get_contents(dirname(__DIR__).'/tools/build-release.sh');
+$badCredentials=false;try{GeoLite2Updater::validateAccountId('');}catch(InvalidArgumentException){$badCredentials=true;}$test($badCredentials,'missing or invalid MaxMind credentials');
+$test(GeoLite2Updater::validateAccountId('123456')==='123456'&&GeoLite2Updater::validateLicenseKey('abcdefghijklmnop')==='abcdefghijklmnop','valid MaxMind credentials');
+$test(GeoLite2Updater::maskSecret('abcdefghijklmnop')==='••••••••mnop','GeoLite2 secret masking');
+$geoRoot=sys_get_temp_dir().'/tya-geo-'.bin2hex(random_bytes(5));mkdir($geoRoot);mkdir($geoRoot.'/storage');mkdir($geoRoot.'/data');$geoCrypto=new \Tenyen\Analytics\Crypto('test-encryption-secret','test-hash-secret');$geoSettings=new GeoLite2Updater($geoRoot,['geoip'=>['city_database'=>$geoRoot.'/data/GeoLite2-City.mmdb','asn_database'=>$geoRoot.'/data/GeoLite2-ASN.mmdb']],$geoCrypto);$savedGeo=$geoSettings->saveSettings('123456','abcdefghijklmnop',true);$credentialPayload=(string)file_get_contents($geoRoot.'/storage/geolite2-credentials.json');$test($savedGeo['configured']===true&&!str_contains($credentialPayload,'abcdefghijklmnop'),'GeoLite2 credentials are encrypted at rest');@unlink($geoRoot.'/storage/geolite2-credentials.json');@unlink($geoRoot.'/storage/geolite2-state.json');@rmdir($geoRoot.'/storage');@rmdir($geoRoot.'/data');@rmdir($geoRoot);
+$test(str_contains($geoUpdater,"'city'=>'GeoLite2-City'")&&str_contains($geoCli,"update('city')"),'successful City update pipeline');
+$test(str_contains($geoUpdater,"'asn'=>'GeoLite2-ASN'")&&str_contains($geoCli,"update('asn')"),'successful ASN update pipeline');
+$test(str_contains($geoUpdater,'foreach(array_keys(self::EDITIONS)')&&str_contains($geoUpdater,"'partial_failure'"),'City-only and ASN-only failures remain independent');
+$test(str_contains($geoUpdater,'The GeoLite2 archive is invalid.'),'invalid archive rejection');
+$test(str_contains($geoUpdater,'The expected MMDB is missing from the archive.'),'missing expected MMDB rejection');
+$test(str_contains($geoUpdater,'wrong database type'),'wrong MMDB type rejection');
+$test(str_contains($geoUpdater,'corrupt or unreadable'),'corrupt MMDB rejection');
+$test(str_contains($geoUpdater,'.incoming-')&&str_contains($geoUpdater,'.previous'),'atomic MMDB replacement');
+$test(str_contains($geoUpdater,'Could not preserve the current MMDB')&&str_contains($geoUpdater,'@rename($backup,$destination)'),'old MMDB retained on replacement failure');
+$test(str_contains($geoUpdater,'cleanupTemps')&&str_contains($geoUpdater,'time()-86400'),'stale GeoLite2 temporary-file cleanup');
+$test(str_contains($manualUpload,'GeoLite2Updater')&&str_contains($manualUpload,'recordManual'),'manual MMDB upload compatibility');
+$test(str_contains($geoUpdater,"'enabled'=>filter_var")&&str_contains($geoUpdater,"state['next_run']"),'automatic update enable and disable');
+$test(str_contains($geoUpdater,'LOCK_EX|LOCK_NB')&&str_contains($geoUpdater,'retry_count')&&str_contains($geoUpdater,'7*86400'),'schedule lock and retry backoff');
+$test(str_contains((string)$adminViews,'data-geolite2-form')&&str_contains((string)$adminViews,"['health']"),'GeoLite2 status UI');
+$test(!preg_match('/error_log\([^\n]*(license|account_id)/i',$geoUpdater.$geoApi.$manualUpload),'GeoLite2 secret absent from logs');
+$test(!GeoLite2Updater::validateArchivePath('../secret')&&!GeoLite2Updater::validateArchivePath('/absolute')&&GeoLite2Updater::validateArchivePath('GeoLite2-City/GeoLite2-City.mmdb'),'archive traversal rejection');
+$test(str_contains($geoApi,'tyaa_require_auth')&&str_contains($geoApi,'tyaa_verify_csrf')&&str_contains($geoApi,'require HTTPS'),'GeoLite2 API authentication CSRF and HTTPS enforcement');
+$test(str_contains($geoUpdater,"'https://download.maxmind.com/app/geoip_download?'")&&str_contains($geoUpdater,'CURLPROTO_HTTPS')&&!str_contains($geoApi,'download_url'),'fixed HTTPS MaxMind endpoint');
+$test(str_contains($buildScript,"! -name '*.mmdb'")&&str_contains($buildScript,"! -path './storage/*'"),'release package excludes MMDB credentials and state');
+$test(str_contains($geoCli,"'scheduled'")&&str_contains($geoUpdater,'due()'),'Native scheduled GeoLite2 update command');
 
 $test(TrafficAttribution::classify('/landing', '', 'https://example.com')['channel'] === 'Direct', 'direct traffic attribution');
 $test(TrafficAttribution::classify('/landing', 'https://example.com/from', 'https://example.com')['channel'] === 'Internal', 'internal traffic attribution');
