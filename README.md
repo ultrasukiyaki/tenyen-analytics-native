@@ -75,7 +75,7 @@ Version 0.7.1 stores completed local-day totals and bounded content, channel, re
 
 ## GeoLite2 maintenance
 
-Version 0.8.0 adds independent City and ASN health, encrypted MaxMind license-key storage, conservative weekly scheduling, manual update-now, locking, retry backoff, validated archive extraction, and atomic MMDB replacement. A failed update keeps the current valid database, and manual upload remains available. See [GeoLite2 automatic updates](docs/GEOLITE2_UPDATES.md).
+Version 0.8.1 hardens the automatic updater for MaxMind's signed Cloudflare R2 delivery. It sends Basic Authentication only to the fixed MaxMind database permalink, disables automatic redirects, validates every redirect against the exact documented HTTPS R2 host, and fetches the artifact with a fresh credential-free cURL handle. Signed URLs are treated as secrets and never enter logs, browser responses, or state. Existing independent City/ASN health, safe activation, scheduling, and manual upload remain available. See [GeoLite2 automatic updates](docs/GEOLITE2_UPDATES.md).
 
 ## Event and campaign integration
 
@@ -93,7 +93,7 @@ Run `php bin/doctor.php` for diagnostics, `php bin/aggregate.php incremental` fo
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.7.1 to v0.8.0 changes no database schema. Existing configuration, installation lock, credentials, keys, language preference, MMDB files, analytics, aggregates, exclusions, metadata, and lifecycle state remain supported. GeoLite2 credentials and update state are created under protected `storage/` only after configuration.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, `storage/`, and `storage/installed.lock`. Upgrading from v0.8.0 to v0.8.1 changes no database schema. Existing configuration, installation lock, administrator and database credentials, encryption keys, site token, encrypted MaxMind credentials, City/ASN MMDB files, language preference, analytics, aggregates, exclusions, metadata, saved views, and lifecycle state remain supported.
 
 Bounce rate remains one-page entry sessions divided by entry sessions. Engagement averages are calculated from preserved sums and sample counts, never by averaging daily averages. Daily distinct visitors are estimates and can count the same anonymous browser again on another day. Notifications, multi-site, and roles remain deferred.
 

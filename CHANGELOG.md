@@ -2,6 +2,19 @@ English | [日本語](CHANGELOG.ja.md)
 
 # Changelog
 
+## 0.8.1 - 2026-08-25
+
+### Fixed
+
+- Split GeoLite2 delivery into an authenticated request to the fixed MaxMind database permalink and a fresh credential-free request to the signed artifact.
+- Added explicit handling for direct HTTP 200 and bounded 301, 302, 303, 307, and 308 hops without enabling automatic redirects.
+
+### Security and compatibility
+
+- Added an exact source-controlled HTTPS allowlist for MaxMind's documented R2 delivery host, rejecting user-info, fragments, non-standard ports, relative URLs, deceptive hosts, loops, and excess hops.
+- Bounded response headers and streamed bytes, classified HTTP failures without response bodies, and kept credentials and signed URLs out of logs, state, JSON, UI, and release files.
+- Preserved manual MMDB upload, existing encrypted credentials, City/ASN isolation, safe atomic activation, Native state, and the v0.8.0 database schema and indexes.
+
 ## 0.8.0 - 2026-08-25
 
 ### Added

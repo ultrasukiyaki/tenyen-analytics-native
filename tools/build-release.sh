@@ -13,6 +13,8 @@ mkdir -p "$package" "$dist"
     find . -type f \
         ! -path './.git/*' \
         ! -path './.github/*' \
+        ! -path './.agents/*' \
+        ! -path './.codex/*' \
         ! -path './vendor/*' \
         ! -path './node_modules/*' \
         ! -path './dist/*' \
@@ -41,13 +43,13 @@ mkdir -p "$package/data" "$package/storage"
 cp -p "$root/data/.gitkeep" "$root/data/.htaccess" "$package/data/"
 cp -p "$root/storage/.gitkeep" "$root/storage/.htaccess" "$package/storage/"
 
-archive="$dist/tenyen-analytics-v0.8.0-stable.zip"
-checksums="$dist/tenyen-analytics-v0.8.0-SHA256SUMS.txt"
+archive="$dist/tenyen-analytics-v0.8.1-stable.zip"
+checksums="$dist/tenyen-analytics-v0.8.1-SHA256SUMS.txt"
 rm -f "$archive" "$checksums"
 (cd "$stage" && zip -qr "$archive" tenyen-analytics)
 unzip -t "$archive"
 
-if unzip -Z1 "$archive" | grep -E '(^|/)(config\.php|vendor/|node_modules/|tests/|tools/|\.git/|installed\.lock)|\.mmdb$|\.log$' >/dev/null; then
+if unzip -Z1 "$archive" | grep -E '(^|/)(config\.php|vendor/|node_modules/|tests/|tools/|prompts/|\.git/|\.agents/|\.codex/|installed\.lock|geolite2-(credentials|state)\.json)|\.mmdb$|\.log$' >/dev/null; then
     echo "Forbidden file found in release archive." >&2
     exit 1
 fi
