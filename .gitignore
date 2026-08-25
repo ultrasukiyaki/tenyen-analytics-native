@@ -6,6 +6,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
+/prompts/
 
 # Local environment, secrets, and machine-specific configuration
 .env

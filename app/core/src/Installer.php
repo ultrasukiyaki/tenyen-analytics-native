@@ -183,7 +183,7 @@ final class Installer
             throw new RuntimeException('storage/ratelimitを作成できません。');
         }
         $lockPayload = json_encode([
-            'version' => '0.6.2',
+            'version' => '0.6.3',
             'installed_at' => gmdate(DATE_ATOM),
             'public_url' => $publicUrl,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

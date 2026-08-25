@@ -2,6 +2,31 @@ English | [日本語](CHANGELOG.ja.md)
 
 # Changelog
 
+## 0.6.3 - 2026-08-25
+
+### Added
+
+- Added authenticated management for exact IPv4/IPv6, CIDR, URI path, Native administrator session, Bot, geo/ASN/organization, environment, referrer-domain, and UTM exclusion rules.
+- Added separate collection, analysis, and combined scopes plus deterministic precedence diagnostics that report every match and the winning action.
+- Added SQL-backed event-to-rule matches so analysis exclusions hide preserved history without report-time full-dataset PHP filtering.
+
+### Changed
+
+- Integrated analysis exclusions across dashboards, real-time activity, access history, session/visitor journeys, content, organizations, traffic sources, campaigns, events, audience, and engagement reports.
+- Expanded the protected administrator session cookie path to the application public root so the collector can recognize an authenticated Native administrator session; the cookie remains HTTP-only, SameSite=Lax, and secure on HTTPS.
+- Added equivalent English and Japanese exclusion documentation and excluded roadmap prompts from release packages.
+
+### Security
+
+- Exclusion management and diagnostics require administrator authentication and CSRF validation; types, scopes, actions, and inputs are bounded and allowlisted, SQL is prepared, and rendered output is escaped.
+- CIDR matching uses bounded binary address comparison without regular expressions or raw SQL. Public collection responses never disclose rule definitions, decrypted IPs, secrets, or internal diagnostics.
+
+### Compatibility
+
+- Adds `tya_exclusion_rules` and `tya_event_exclusions` through an idempotent migration. Existing event rows and administrator metadata are not deleted or rewritten.
+- Upgrades from v0.6.2 preserve `config.php`, `data/`, `storage/`, `storage/installed.lock`, credentials, keys, site token, MMDB files, language preference, events, sessions, annotations, tags, and saved views.
+- Export, retention management, daily aggregates, notifications, and lead scoring remain deferred.
+
 ## 0.6.2 - 2026-07-30
 
 ### Added

@@ -18,6 +18,7 @@ mkdir -p "$package" "$dist"
         ! -path './dist/*' \
         ! -path './build/*' \
         ! -path './release/*' \
+        ! -path './prompts/*' \
         ! -path './tools/*' \
         ! -path './tests/*' \
         ! -path './storage/*' \
@@ -40,8 +41,8 @@ mkdir -p "$package/data" "$package/storage"
 cp -p "$root/data/.gitkeep" "$root/data/.htaccess" "$package/data/"
 cp -p "$root/storage/.gitkeep" "$root/storage/.htaccess" "$package/storage/"
 
-archive="$dist/tenyen-analytics-v0.6.2-stable.zip"
-checksums="$dist/tenyen-analytics-v0.6.2-SHA256SUMS.txt"
+archive="$dist/tenyen-analytics-v0.6.3-stable.zip"
+checksums="$dist/tenyen-analytics-v0.6.3-SHA256SUMS.txt"
 rm -f "$archive" "$checksums"
 (cd "$stage" && zip -qr "$archive" tenyen-analytics)
 unzip -t "$archive"

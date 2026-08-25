@@ -111,4 +111,29 @@ CREATE TABLE IF NOT EXISTS tya_saved_views (
     KEY owner_pinned (owner_key, pinned, updated_at),
     KEY owner_default (owner_key, report, is_default)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tya_exclusion_rules (
+    rule_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    rule_type VARCHAR(32) NOT NULL,
+    rule_value VARCHAR(255) NOT NULL,
+    scope VARCHAR(16) NOT NULL,
+    action VARCHAR(16) NOT NULL DEFAULT 'exclude',
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    note VARCHAR(1000) NOT NULL DEFAULT '',
+    precedence SMALLINT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (rule_id),
+    KEY enabled_scope_precedence (enabled, scope, precedence, rule_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tya_event_exclusions (
+    event_id BIGINT UNSIGNED NOT NULL,
+    rule_id BIGINT UNSIGNED NOT NULL,
+    matched_at DATETIME NOT NULL,
+    PRIMARY KEY (event_id, rule_id),
+    KEY rule_event (rule_id, event_id),
+    CONSTRAINT tya_event_exclusions_event FOREIGN KEY (event_id) REFERENCES tya_events(event_id) ON DELETE CASCADE,
+    CONSTRAINT tya_event_exclusions_rule FOREIGN KEY (rule_id) REFERENCES tya_exclusion_rules(rule_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL;
