@@ -73,7 +73,7 @@ final class SessionAnalytics
         if ($sessionId === '') {
             return null;
         }
-        $aggregate = $this->sessionAggregateSql('e.session_id = ?');
+        $aggregate = $this->sessionAggregateSql('e.session_id = ? AND '.ExclusionRules::analysisSql('e'));
         $stmt = $this->pdo->prepare($aggregate);
         $stmt->execute([$sessionId]);
         $summary = $stmt->fetch();
@@ -83,7 +83,7 @@ final class SessionAnalytics
         $events = $this->pdo->prepare(
             'SELECT event_id,occurred_at,event_type,event_name,path,page_title,referrer,target_url,duration_ms,scroll_depth,'
             . 'traffic_channel,referrer_domain,utm_source,utm_medium,utm_campaign,utm_content,utm_term,event_metadata '
-            . 'FROM tya_events WHERE session_id = ? ORDER BY occurred_at ASC,event_id ASC'
+            . 'FROM tya_events WHERE session_id = ? AND '.ExclusionRules::analysisSql('tya_events').' ORDER BY occurred_at ASC,event_id ASC'
         );
         $events->execute([$sessionId]);
         return ['summary' => $summary, 'events' => $events->fetchAll()];
@@ -105,25 +105,25 @@ final class SessionAnalytics
             . "SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(country_name,'') ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) country_name,"
             . "SUBSTRING_INDEX(GROUP_CONCAT(asn ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) asn,"
             . "SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(asn_org,'') ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) asn_org "
-            . 'FROM tya_events WHERE visitor_id = ?'
+            . 'FROM tya_events WHERE visitor_id = ? AND '.ExclusionRules::analysisSql('tya_events')
         );
         $stmt->execute([$visitorId]);
         $summary = $stmt->fetch();
         if (!$summary || $summary['first_seen'] === null) {
             return null;
         }
-        $aggregate = $this->sessionAggregateSql("e.visitor_id = ? AND e.session_id <> ''");
+        $aggregate = $this->sessionAggregateSql("e.visitor_id = ? AND e.session_id <> '' AND ".ExclusionRules::analysisSql('e'));
         $sessions = $this->pdo->prepare(
             "SELECT * FROM ({$aggregate}) sessions ORDER BY session_start DESC,session_id DESC LIMIT 100"
         );
         $sessions->execute([$visitorId]);
         $content = $this->pdo->prepare(
             "SELECT path,MAX(page_title) page_title,COUNT(*) hits FROM tya_events "
-            . "WHERE visitor_id=? AND event_type='pageview' GROUP BY path ORDER BY hits DESC,path ASC LIMIT 10"
+            . "WHERE visitor_id=? AND event_type='pageview' AND ".ExclusionRules::analysisSql('tya_events')." GROUP BY path ORDER BY hits DESC,path ASC LIMIT 10"
         );
         $content->execute([$visitorId]);
         $referrers = $this->pdo->prepare(
-            "SELECT referrer,COUNT(*) hits FROM tya_events WHERE visitor_id=? AND event_type='pageview' AND referrer<>'' "
+            "SELECT referrer,COUNT(*) hits FROM tya_events WHERE visitor_id=? AND event_type='pageview' AND referrer<>'' AND ".ExclusionRules::analysisSql('tya_events')." "
             . 'GROUP BY referrer ORDER BY hits DESC,referrer ASC LIMIT 10'
         );
         $referrers->execute([$visitorId]);
@@ -165,12 +165,13 @@ SQL;
 
     private function sessionAggregateSql(string $where): string
     {
+        $analysis = ExclusionRules::analysisSql('tya_events');
         return <<<SQL
 SELECT e.session_id,MAX(e.visitor_id) visitor_id,MIN(e.occurred_at) session_start,MAX(e.occurred_at) last_activity,
        SUM(e.event_type='pageview') pageviews,
        COALESCE((SELECT SUM(d.max_duration) FROM (
            SELECT session_id,path,MAX(duration_ms) max_duration FROM tya_events
-           WHERE event_type='engagement' GROUP BY session_id,path
+           WHERE event_type='engagement' AND {$analysis} GROUP BY session_id,path
        ) d WHERE d.session_id=e.session_id),0) engaged_time_ms,
        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN e.path END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) landing_page,
        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN e.path END ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) exit_page,
@@ -194,7 +195,7 @@ SQL;
     /** @return array{0:list<string>,1:list<mixed>} */
     private function eventWhere(array $filters, string $alias): array
     {
-        $where = ['1=1'];
+        $where = ['1=1', ExclusionRules::analysisSql($alias)];
         $params = [];
         if (($filters['actor'] ?? 'human') === 'human') {
             $where[] = "{$alias}.is_bot=0";

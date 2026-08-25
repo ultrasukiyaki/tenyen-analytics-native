@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Tenyen\Analytics\OrganizationClassifier;
+use Tenyen\Analytics\ExclusionRules;
 
 $root = dirname(__DIR__, 3);
 $configFile = $root . '/config.php';
@@ -194,7 +195,7 @@ if (!in_array($perPage, [25, 50, 100], true)) {
 $page = max(1, (int)($_GET['page'] ?? 1));
 $order = strtolower((string)($_GET['order'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
 
-$where = ['1 = 1'];
+$where = ['1 = 1', ExclusionRules::analysisSql('tya_events')];
 $params = [];
 if ($event !== 'all') {
     $where[] = 'event_type = ?';

@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use Tenyen\Analytics\BotDetector;
+use Tenyen\Analytics\ExclusionRules;
 use Tenyen\Analytics\IpResolver;
+use Tenyen\Analytics\OrganizationClassifier;
 use Tenyen\Analytics\Payload;
 use Tenyen\Analytics\RateLimiter;
 use Tenyen\Analytics\TrafficAttribution;
@@ -75,6 +77,30 @@ try {
 
     $geo = $geoIp->lookup($ip);
     $agent = UserAgentParser::parse($ua);
+    $nativeAdmin = false;
+    if (isset($_COOKIE['TYA_ADMIN'])) {
+        require_once $root . '/app/admin-auth.php';
+        tyaa_start_session($config);
+        $nativeAdmin = tyaa_session_valid($config);
+    }
+    $classification = OrganizationClassifier::classify(
+        isset($geo['asn']) ? (int)$geo['asn'] : null,
+        (string)$geo['asn_org'],
+        $isBot,
+        (array)($app['organization_overrides'] ?? [])
+    );
+    $exclusionContext = $payload + $attribution + $geo + $agent + [
+        'ip' => $ip,
+        'is_bot' => $isBot,
+        'native_admin' => $nativeAdmin,
+        'organization_category' => $classification['category'],
+    ];
+    $exclusions = new ExclusionRules($pdo, $crypto, (array)($app['organization_overrides'] ?? []));
+    if ($exclusions->collectionDecision($exclusionContext)['excluded']) {
+        http_response_code(202);
+        echo json_encode(['ok' => true, 'excluded' => true]);
+        exit;
+    }
 
     $sql = <<<'SQL'
 INSERT INTO tya_events (
@@ -91,6 +117,7 @@ INSERT INTO tya_events (
     :device_type, :language, :timezone, :screen, :viewport, :duration_ms, :scroll_depth, :is_bot
 )
 SQL;
+    $pdo->beginTransaction();
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
         'occurred_at' => gmdate('Y-m-d H:i:s'),
@@ -134,6 +161,8 @@ SQL;
         'scroll_depth' => $payload['scroll_depth'],
         'is_bot' => $isBot ? 1 : 0,
     ]);
+    $exclusions->recordAnalysisMatches((int)$pdo->lastInsertId(), $exclusionContext);
+    $pdo->commit();
 
     http_response_code(201);
     echo json_encode(['ok' => true], JSON_UNESCAPED_SLASHES);
@@ -141,6 +170,7 @@ SQL;
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'bad_request']);
 } catch (Throwable $e) {
+    if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
     error_log('[Tenyen Analytics] ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'server_error']);

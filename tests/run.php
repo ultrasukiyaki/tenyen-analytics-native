@@ -11,6 +11,7 @@ use Tenyen\Analytics\Translator;
 use Tenyen\Analytics\TrafficAttribution;
 use Tenyen\Analytics\Payload;
 use Tenyen\Analytics\AdminMetadata;
+use Tenyen\Analytics\ExclusionRules;
 
 $failures = 0;
 $test = static function (bool $condition, string $message) use (&$failures): void {
@@ -52,7 +53,7 @@ foreach ($samples as $organization => $category) {
 }
 
 $adminViews = file_get_contents(dirname(__DIR__) . '/app/admin-views.php');
-foreach (['dashboard','realtime','history','sessions','events','campaigns','content','referrers','organizations','metadata','audience','engagement','system','settings'] as $view) {
+foreach (['dashboard','realtime','history','sessions','events','campaigns','content','referrers','organizations','metadata','exclusions','audience','engagement','system','settings'] as $view) {
     $test(str_contains((string)$adminViews, "'{$view}'"), "admin view exists: {$view}");
 }
 
@@ -62,7 +63,7 @@ $test(LocaleResolver::resolve(['app' => []], null, null, 'en') === 'en', 'old co
 
 $versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md', 'CHANGELOG.ja.md'];
 foreach ($versionFiles as $file) {
-    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.6.2'), "version reference: {$file}");
+    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.6.3'), "version reference: {$file}");
 }
 
 $english = require dirname(__DIR__) . '/app/i18n/en.php';
@@ -75,6 +76,9 @@ $test($ja->get('dashboard.description') === 'サイト全体の動きを簡潔�
 $test($en->get('nav.sessions') === 'Sessions' && $ja->get('nav.sessions') === 'セッション', 'bilingual Sessions navigation');
 $test($en->get('nav.events') === 'Events' && $ja->get('nav.events') === 'イベント', 'bilingual Events navigation');
 $test($en->get('nav.metadata') === 'Knowledge' && $ja->get('nav.metadata') === 'ナレッジ', 'bilingual Knowledge navigation');
+$test($en->get('nav.exclusions') === 'Exclusions' && $ja->get('nav.exclusions') === '除外ルール', 'bilingual Exclusions navigation');
+$authSource=(string)file_get_contents(dirname(__DIR__).'/app/admin-auth.php');
+$test(str_contains($authSource,"return \$path === '/' ? '/' : rtrim(\$path, '/') . '/';"),'administrator session cookie reaches the collector path');
 
 $test(AdminMetadata::entityKey('organization', '64500') === '64500', 'numeric ASN annotation identity');
 $test(AdminMetadata::entityKey('visitor', 'visitor_abc-123') === 'visitor_abc-123', 'opaque anonymous visitor identity');
@@ -97,6 +101,36 @@ $test(str_contains($metadataService,'ON DUPLICATE KEY UPDATE')&&str_contains($me
 $test(str_contains($metadataService,'self::VIEW_KEYS')&&str_contains($metadataService,'unsupported keys'),'saved-view state uses report allowlists');
 $test(str_contains($metadataService,"unset(\$result['page'],\$result['csrf'],\$result['session_id'],\$result['site_token'])"),'saved views remove transient and secret keys');
 $test(!str_contains((string)file_get_contents(dirname(__DIR__).'/public/collect.php'),'AdminMetadata'),'public collector does not expose administrator metadata');
+
+$rule=static fn(int $id,string $type,string $value,int $precedence=100,bool $enabled=true):array=>['rule_id'=>$id,'rule_type'=>$type,'rule_value'=>$value,'scope'=>'both','action'=>'exclude','precedence'=>$precedence,'enabled'=>$enabled];
+$evaluate=static fn(array $rules,array $context):array=>ExclusionRules::evaluateRules($rules,$context);
+$test($evaluate([$rule(1,'ip_exact','192.0.2.10',20)],['ip'=>'192.0.2.10'])['excluded'],'IPv4 exact exclusion');
+$test(!$evaluate([$rule(1,'ip_exact','192.0.2.10',20)],['ip'=>'192.0.2.11'])['excluded'],'IPv4 exact boundary');
+$test($evaluate([$rule(1,'ip_exact','2001:db8::1',20)],['ip'=>'2001:db8::1'])['excluded'],'IPv6 exact exclusion');
+$test($evaluate([$rule(1,'ip_exact','2001:db8::1',20)],['ip'=>'2001:0db8:0:0:0:0:0:1'])['excluded'],'IPv6 exact canonical equivalence');
+$test($evaluate([$rule(1,'ip_cidr','192.0.2.0/24',30)],['ip'=>'192.0.2.255'])['excluded'],'IPv4 CIDR upper boundary');
+$test(!$evaluate([$rule(1,'ip_cidr','192.0.2.0/24',30)],['ip'=>'192.0.3.0'])['excluded'],'IPv4 CIDR outside boundary');
+$test($evaluate([$rule(1,'ip_cidr','2001:db8::/32',30)],['ip'=>'2001:db8:ffff::1'])['excluded'],'IPv6 CIDR match');
+$invalid=false;try{ExclusionRules::normalizedInput('ip_cidr','192.0.2.0/99','analysis');}catch(InvalidArgumentException){$invalid=true;}$test($invalid,'invalid CIDR rejected');
+$test($evaluate([$rule(1,'uri_exact','/private',40)],['path'=>'/private?x=1'])['excluded'],'URI exact ignores query');
+$test(!$evaluate([$rule(1,'uri_exact','/private',40)],['path'=>'/private/child'])['excluded'],'URI exact does not match child path');
+$test($evaluate([$rule(1,'uri_prefix','/private',50)],['path'=>'/private/child'])['excluded'],'URI prefix matches child path');
+$test($evaluate([$rule(1,'native_admin','1',10)],['native_admin'=>true])['excluded'],'Native administrator session exclusion');
+$test($evaluate([$rule(1,'bot','1',60)],['is_bot'=>true])['excluded'],'Bot exclusion');
+foreach([['country','JP','country_code','jp'],['region','Tokyo','region','TOKYO'],['asn','64500','asn',64500],['organization','Example Corp','asn_org','The Example Corp Network'],['organization_category','company','organization_category','COMPANY'],['browser','Firefox','browser','firefox'],['os','Linux','os','LINUX'],['device','desktop','device_type','DESKTOP'],['referrer_domain','example.com','referrer_domain','EXAMPLE.COM'],['utm_source','newsletter','utm_source','NEWSLETTER'],['utm_medium','email','utm_medium','EMAIL'],['utm_campaign','launch','utm_campaign','LAUNCH']] as [$type,$value,$field,$actual])$test($evaluate([$rule(1,$type,$value)],[$field=>$actual])['excluded'],"exclusion type matches: {$type}");
+$test(!$evaluate([$rule(1,'bot','1',60,false)],['is_bot'=>true])['excluded'],'disabled rule does not match');
+$decision=$evaluate([$rule(9,'bot','1',60),$rule(3,'native_admin','1',10),$rule(2,'ip_exact','192.0.2.10',20)],['is_bot'=>true,'native_admin'=>true,'ip'=>'192.0.2.10']);
+$test((int)$decision['winner']['rule_id']===3&&count($decision['matches'])===3,'deterministic precedence conflict and diagnostic matches');
+$test(str_contains($decision['reason'],'precedence 10')&&str_contains($decision['reason'],'action: exclude'),'diagnostic explains precedence, action, and reason');
+$many=[];for($n=1;$n<=1000;$n++)$many[]=$rule($n,'ip_exact','198.51.100.'.($n%255),20+$n);
+$test($evaluate($many,['ip'=>'203.0.113.1'])['excluded']===false,'large rule set evaluation');
+$invalid=false;try{ExclusionRules::normalizedInput('organization','<script>alert(1)</script>','analysis');}catch(InvalidArgumentException){$invalid=true;}$test($invalid,'XSS-shaped rule value rejected');
+$exclusionApi=(string)file_get_contents(dirname(__DIR__).'/public/admin/api/exclusions.php');
+$collector=(string)file_get_contents(dirname(__DIR__).'/public/collect.php');
+$test(str_contains($exclusionApi,'tyaa_require_auth')&&str_contains($exclusionApi,'tyaa_verify_csrf'),'exclusion API requires authentication and CSRF');
+$test(strpos($collector,'collectionDecision')<strpos($collector,'INSERT INTO tya_events'),'collection exclusion is evaluated before future storage');
+$test(str_contains($collector,'recordAnalysisMatches')&&str_contains(ExclusionRules::analysisSql('e'),'NOT EXISTS'),'analysis exclusion uses SQL match mapping');
+$test(str_contains($schema,'tya_exclusion_rules')&&str_contains($schema,'tya_event_exclusions'),'fresh schema includes exclusion rules and non-destructive historical matches');
 
 $test(TrafficAttribution::classify('/landing', '', 'https://example.com')['channel'] === 'Direct', 'direct traffic attribution');
 $test(TrafficAttribution::classify('/landing', 'https://example.com/from', 'https://example.com')['channel'] === 'Internal', 'internal traffic attribution');

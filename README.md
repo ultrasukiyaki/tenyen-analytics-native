@@ -14,7 +14,8 @@ The application stores analytics on infrastructure you control. It does not use 
 - Traffic channels, referrer domains, and first-touch UTM campaign attribution
 - Encrypted raw-IP storage with HMAC exact-match search
 - GeoLite2 City and ASN enrichment with a built-in MMDB reader
-- Bot detection, organization classification, and ten asynchronous admin views
+- Bot detection, organization classification, and eleven asynchronous admin views
+- Collection and analysis exclusion rules with deterministic diagnostics
 - English and standard-Japanese interfaces
 
 ## Requirements
@@ -57,6 +58,10 @@ Saved views are private to the configured administrator using a forward-compatib
 
 See [Administrator metadata and saved views](docs/ADMIN_METADATA.md) for entity-key, schema, index, orphan, and upgrade details.
 
+## Exclusion rules
+
+Version 0.6.3 adds authenticated management and diagnostics for exact IP, CIDR, URI, Native administrator, Bot, geo/ASN/organization, browser/OS/device, referrer-domain, and UTM rules. Collection scope prevents future storage; analysis scope hides matching preserved history without deleting it. See [Exclusion rules](docs/EXCLUSIONS.md) for precedence, matching, privacy, and upgrade details.
+
 ## Event and campaign integration
 
 Automatic external-link and download tracking remains enabled. Internal links can be enabled with `track_internal_links`; buttons require both `track_buttons` and `data-tenyen-event="name"`; forms require `track_forms` and the same explicit attribute. Form values, DOM content, passwords, and payment data are never collected.
@@ -73,9 +78,9 @@ Run `php bin/doctor.php` for diagnostics, `php bin/cleanup.php` for retention cl
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.6.1 to v0.6.2 runs an idempotent migration that creates annotation, tag, assignment, and saved-view tables without rewriting analytics. Existing configuration, installation lock, administrator/database credentials, site token, encryption/HMAC keys, language preference, MMDB files, events, and sessions remain supported. Re-running the migration preserves existing metadata.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.6.2 to v0.6.3 runs an idempotent migration that creates exclusion-rule and event-match tables without rewriting or deleting analytics. Existing configuration, installation lock, administrator/database credentials, site token, encryption/HMAC keys, language preference, MMDB files, events, sessions, metadata, tags, and saved views remain supported. Re-running the migration preserves existing state.
 
-Bounce rate remains one-page entry sessions divided by entry sessions. Click rate is sessions with a matching click from a source page divided by sessions containing a qualifying pageview of that source page; a zero denominator returns 0%. Notification, retention-management, export, aggregation, multi-site, roles, and a full exclusion manager are deferred.
+Bounce rate remains one-page entry sessions divided by entry sessions. Click rate is sessions with a matching click from a source page divided by sessions containing a qualifying pageview of that source page; a zero denominator returns 0%. Notification, retention management, export, aggregation, multi-site, and roles are deferred.
 
 ## Privacy and security
 
