@@ -2,6 +2,31 @@ English | [日本語](CHANGELOG.ja.md)
 
 # Changelog
 
+## 0.7.0 - 2026-08-25
+
+### Added
+
+- Added streaming CSV and stable-schema JSON export for access logs, sessions, content, organizations, traffic sources, campaigns, and events, with meaningful report filters and analysis exclusions.
+- Added omit, masked, and explicitly confirmed raw-IP modes; CSV formula-injection mitigation; and authenticated, CSRF-protected download requests.
+- Added unlimited, 30/90/180/365-day, and validated custom raw-log retention, dry-run counts, bounded batch cleanup, overlap locking, resumable state, scheduled CLI operation, and safe failure reporting.
+- Added database/event-table size, raw-event/session totals, oldest/newest record, monthly count, retention, and cleanup diagnostics.
+
+### Changed
+
+- Replaced the legacy single unbounded delete with transactional ID batches and atomic lifecycle state under protected `storage/`.
+- Added equivalent English and Japanese lifecycle, export, privacy, scheduling, and upgrade documentation.
+
+### Security
+
+- Raw IP export requires administrator authentication, CSRF validation, and exact typed confirmation. Export defaults to omitting IP and uses private no-store responses.
+- Export fields and filters are bounded/allowlisted, SQL is prepared, CSV formula-like cells are neutralized, and large results are fetched and emitted incrementally.
+- Cleanup exposes no public maintenance URL and deletes only selected event IDs; settings, annotations, tags, saved views, credentials, keys, tokens, and MMDB files are excluded.
+
+### Compatibility
+
+- No database tables or indexes are added. Upgrades from v0.6.3 preserve all application state and analytics data.
+- Raw deletion before v0.7.1 daily aggregation permanently removes the deleted detailed and statistical history; the administration UI warns before cleanup.
+
 ## 0.6.3 - 2026-08-25
 
 ### Added
