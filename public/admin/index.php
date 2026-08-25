@@ -29,6 +29,7 @@ $views = [
     'organizations' => ['icon'=>'◎','label'=>$translator->get('nav.organizations')],
     'metadata' => ['icon'=>'★','label'=>$translator->get('nav.metadata')],
     'exclusions' => ['icon'=>'⊘','label'=>$translator->get('nav.exclusions')],
+    'lifecycle' => ['icon'=>'⇩','label'=>$translator->get('nav.lifecycle')],
     'audience' => ['icon'=>'◉','label'=>$translator->get('nav.audience')],
     'engagement' => ['icon'=>'⌁','label'=>$translator->get('nav.engagement')],
     'system' => ['icon'=>'⚙','label'=>$translator->get('nav.system')],
@@ -63,13 +64,13 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 ?>
 <!doctype html><html lang="<?= tyaav_h($translator->htmlLang()) ?>"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?= tyaav_h($initial['title']) ?> | Tenyen Analytics</title>
-<link rel="stylesheet" href="admin-app.css?v=0.6.3"><link rel="stylesheet" href="admin-history.css?v=0.6.3"><link rel="stylesheet" href="admin-sessions.css?v=0.6.3"></head><body>
+<link rel="stylesheet" href="admin-app.css?v=0.7.0"><link rel="stylesheet" href="admin-history.css?v=0.7.0"><link rel="stylesheet" href="admin-sessions.css?v=0.7.0"></head><body>
 <div class="app-shell" data-app-shell>
-<header class="topbar"><button class="menu-toggle" type="button" data-menu-toggle aria-label="Menu">☰</button><a class="brand" href="?view=dashboard" data-view-link="dashboard"><span class="brand-mark">T</span><span><b>Tenyen Analytics</b><small>v0.6.3</small></span></a><div class="topbar-site"><?= tyaav_h($siteHost) ?></div><div class="topbar-status" data-global-status><?= tyaav_h($translator->get('common.ready')) ?></div><a class="logout-link" href="?logout=1"><?= tyaav_h($translator->get('auth.logout')) ?></a></header>
+<header class="topbar"><button class="menu-toggle" type="button" data-menu-toggle aria-label="Menu">☰</button><a class="brand" href="?view=dashboard" data-view-link="dashboard"><span class="brand-mark">T</span><span><b>Tenyen Analytics</b><small>v0.7.0</small></span></a><div class="topbar-site"><?= tyaav_h($siteHost) ?></div><div class="topbar-status" data-global-status><?= tyaav_h($translator->get('common.ready')) ?></div><a class="logout-link" href="?logout=1"><?= tyaav_h($translator->get('auth.logout')) ?></a></header>
 <aside class="sidebar" data-sidebar><nav><?php foreach($views as $key=>$item): ?><a href="?view=<?= tyaav_h($key) ?>" data-view-link="<?= tyaav_h($key) ?>" class="<?= $view===$key?'active':'' ?>"><span class="nav-icon"><?= tyaav_h($item['icon']) ?></span><span><?= tyaav_h($item['label']) ?></span></a><?php endforeach; ?></nav></aside>
-<main class="main"><div class="view-loading" data-view-loading hidden><span class="spinner"></span><span><?= tyaav_h($translator->get('common.loading')) ?></span></div><div class="view-error" data-view-error hidden></div><div class="view-content" data-view-content><?= $initial['html'] ?></div><footer class="product-footer">Tenyen Analytics v0.6.3 — <a href="https://www.10yendama.com/" target="_blank" rel="noopener noreferrer">Powered by 10yendama.com</a> — © <?= date('Y') > 2026 ? '2026–' . date('Y') : '2026' ?> 10yendama.com</footer></main>
+<main class="main"><div class="view-loading" data-view-loading hidden><span class="spinner"></span><span><?= tyaav_h($translator->get('common.loading')) ?></span></div><div class="view-error" data-view-error hidden></div><div class="view-content" data-view-content><?= $initial['html'] ?></div><footer class="product-footer">Tenyen Analytics v0.7.0 — <a href="https://www.10yendama.com/" target="_blank" rel="noopener noreferrer">Powered by 10yendama.com</a> — © <?= date('Y') > 2026 ? '2026–' . date('Y') : '2026' ?> 10yendama.com</footer></main>
 </div>
 <script>window.TYA_ADMIN_CONFIG=<?= json_encode($jsConfig, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;</script>
 <script type="application/json" id="tya-initial-state"><?= json_encode($payload, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?></script>
-<script src="admin-charts.js?v=0.6.3" defer></script><script src="admin-history.js?v=0.6.3" defer></script><script src="admin-sessions.js?v=0.6.3" defer></script><script src="admin-app.js?v=0.6.3" defer></script>
+<script src="admin-charts.js?v=0.7.0" defer></script><script src="admin-history.js?v=0.7.0" defer></script><script src="admin-sessions.js?v=0.7.0" defer></script><script src="admin-app.js?v=0.7.0" defer></script>
 </body></html>

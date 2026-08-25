@@ -118,6 +118,11 @@
     return payload;
   }
 
+  async function lifecycleRequest(action, data = {}) {
+    const response=await fetch(new URL('api/lifecycle.php',location.href),{method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-Token':config.csrf||''},body:JSON.stringify({action,...data})});
+    const payload=await response.json();if(response.status===401){location.reload();throw new Error('Authentication required.');}if(!response.ok||payload.ok===false)throw new Error(payload.message||'The lifecycle operation failed.');return payload;
+  }
+
   function dialogShell(title) {
     const dialog = document.createElement('dialog');
     dialog.className = 'metadata-dialog';
@@ -259,6 +264,8 @@
     if(editExclusion){const item=JSON.parse(editExclusion.dataset.rule);const form=content.querySelector('[data-exclusion-form]');if(form){Object.entries({rule_id:item.rule_id,rule_type:item.rule_type,rule_value:item.rule_value,scope:item.scope,note:item.note}).forEach(([key,value])=>{const field=form.elements.namedItem(key);if(field)field.value=value??'';});form.elements.namedItem('enabled').checked=Boolean(Number(item.enabled));form.scrollIntoView({behavior:'smooth',block:'start'});}return;}
     const deleteExclusion=event.target.closest('[data-delete-exclusion]');
     if(deleteExclusion&&confirm(t('common.confirm_delete'))){try{await exclusionRequest('delete',{rule_id:Number(deleteExclusion.dataset.deleteExclusion)});await load(new URL(location.href),{push:false});}catch(error){errorBox.textContent=error.message;errorBox.hidden=false;}return;}
+    const lifecycleAction=event.target.closest('[data-lifecycle-action]');
+    if(lifecycleAction){const result=content.querySelector('[data-lifecycle-result]');if(lifecycleAction.dataset.lifecycleAction==='cleanup'&&!confirm(t('common.confirm_delete')))return;try{const payload=await lifecycleRequest(lifecycleAction.dataset.lifecycleAction);result.textContent=JSON.stringify(payload.preview||payload.cleanup,null,2);result.hidden=false;if(payload.cleanup)await load(new URL(location.href),{push:false});}catch(error){result.textContent=error.message;result.hidden=false;}return;}
     const copy = event.target.closest('[data-copy-code]');
     if (copy) {
       const text = copy.parentElement?.querySelector('code')?.textContent || '';
@@ -270,6 +277,8 @@
   content.addEventListener('submit', async event => {
     const exclusionForm=event.target.closest('[data-exclusion-form]');
     if(exclusionForm){event.preventDefault();const data=Object.fromEntries(new FormData(exclusionForm));data.enabled=exclusionForm.elements.namedItem('enabled').checked;const note=exclusionForm.querySelector('[data-exclusion-status]');try{await exclusionRequest('save',data);await load(new URL(location.href),{push:false});}catch(error){note.textContent=error.message;}return;}
+    const lifecycleForm=event.target.closest('[data-lifecycle-form]');
+    if(lifecycleForm){event.preventDefault();const statusNote=lifecycleForm.querySelector('[data-lifecycle-status]');try{await lifecycleRequest(lifecycleForm.dataset.action,Object.fromEntries(new FormData(lifecycleForm)));await load(new URL(location.href),{push:false});}catch(error){statusNote.textContent=error.message;}return;}
     const diagnosticForm=event.target.closest('[data-exclusion-diagnostic]');
     if(diagnosticForm){event.preventDefault();const result=diagnosticForm.querySelector('[data-exclusion-result]');try{const payload=await exclusionRequest('diagnose',Object.fromEntries(new FormData(diagnosticForm)));result.textContent=JSON.stringify(payload.diagnostic,null,2);result.hidden=false;}catch(error){result.textContent=error.message;result.hidden=false;}return;}
     const languageForm = event.target.closest('[data-language-form]');

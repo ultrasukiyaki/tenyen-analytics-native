@@ -16,7 +16,7 @@ function row(string $label, bool $ok, string $detail = ''): void
     printf("%-31s %s%s\n", $label, $ok ? '[ OK ]' : '[ NG ]', $detail !== '' ? '  ' . $detail : '');
 }
 
-echo "Tenyen Analytics Diagnostics v0.6.3\n";
+echo "Tenyen Analytics Diagnostics v0.7.0\n";
 echo str_repeat('=', 64) . "\n";
 foreach ($installer->environment() as $check) {
     row($check['label'], $check['ok'], $check['detail']);

@@ -14,8 +14,9 @@ The application stores analytics on infrastructure you control. It does not use 
 - Traffic channels, referrer domains, and first-touch UTM campaign attribution
 - Encrypted raw-IP storage with HMAC exact-match search
 - GeoLite2 City and ASN enrichment with a built-in MMDB reader
-- Bot detection, organization classification, and eleven asynchronous admin views
+- Bot detection, organization classification, and twelve asynchronous admin views
 - Collection and analysis exclusion rules with deterministic diagnostics
+- Streaming CSV/JSON export, retention-safe cleanup controls, and storage diagnostics
 - English and standard-Japanese interfaces
 
 ## Requirements
@@ -62,6 +63,10 @@ See [Administrator metadata and saved views](docs/ADMIN_METADATA.md) for entity-
 
 Version 0.6.3 adds authenticated management and diagnostics for exact IP, CIDR, URI, Native administrator, Bot, geo/ASN/organization, browser/OS/device, referrer-domain, and UTM rules. Collection scope prevents future storage; analysis scope hides matching preserved history without deleting it. See [Exclusion rules](docs/EXCLUSIONS.md) for precedence, matching, privacy, and upgrade details.
 
+## Log lifecycle and export
+
+Version 0.7.0 streams filtered access logs, sessions, content, organizations, traffic sources, campaigns, and events as CSV or stable-schema JSON. IPs are omitted by default, with masked and explicitly confirmed raw modes. Retention supports unlimited, presets, and validated custom days; cleanup provides preview counts, an overlap lock, bounded transactions, resumable state, CLI scheduling, and storage diagnostics. See [Log lifecycle, export, and retention](docs/LOG_LIFECYCLE.md).
+
 ## Event and campaign integration
 
 Automatic external-link and download tracking remains enabled. Internal links can be enabled with `track_internal_links`; buttons require both `track_buttons` and `data-tenyen-event="name"`; forms require `track_forms` and the same explicit attribute. Form values, DOM content, passwords, and payment data are never collected.
@@ -78,9 +83,9 @@ Run `php bin/doctor.php` for diagnostics, `php bin/cleanup.php` for retention cl
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.6.2 to v0.6.3 runs an idempotent migration that creates exclusion-rule and event-match tables without rewriting or deleting analytics. Existing configuration, installation lock, administrator/database credentials, site token, encryption/HMAC keys, language preference, MMDB files, events, sessions, metadata, tags, and saved views remain supported. Re-running the migration preserves existing state.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.6.3 to v0.7.0 adds no database tables or indexes. Existing configuration, installation lock, administrator/database credentials, site token, encryption/HMAC keys, language preference, MMDB files, events, sessions, exclusion rules, metadata, tags, and saved views remain supported. Lifecycle state is stored under `storage/`.
 
-Bounce rate remains one-page entry sessions divided by entry sessions. Click rate is sessions with a matching click from a source page divided by sessions containing a qualifying pageview of that source page; a zero denominator returns 0%. Notification, retention management, export, aggregation, multi-site, and roles are deferred.
+Bounce rate remains one-page entry sessions divided by entry sessions. Click rate is sessions with a matching click from a source page divided by sessions containing a qualifying pageview of that source page; a zero denominator returns 0%. Notifications, daily aggregation, multi-site, and roles are deferred.
 
 ## Privacy and security
 

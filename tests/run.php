@@ -12,6 +12,8 @@ use Tenyen\Analytics\TrafficAttribution;
 use Tenyen\Analytics\Payload;
 use Tenyen\Analytics\AdminMetadata;
 use Tenyen\Analytics\ExclusionRules;
+use Tenyen\Analytics\AnalyticsExport;
+use Tenyen\Analytics\LogLifecycle;
 
 $failures = 0;
 $test = static function (bool $condition, string $message) use (&$failures): void {
@@ -53,7 +55,7 @@ foreach ($samples as $organization => $category) {
 }
 
 $adminViews = file_get_contents(dirname(__DIR__) . '/app/admin-views.php');
-foreach (['dashboard','realtime','history','sessions','events','campaigns','content','referrers','organizations','metadata','exclusions','audience','engagement','system','settings'] as $view) {
+foreach (['dashboard','realtime','history','sessions','events','campaigns','content','referrers','organizations','metadata','exclusions','lifecycle','audience','engagement','system','settings'] as $view) {
     $test(str_contains((string)$adminViews, "'{$view}'"), "admin view exists: {$view}");
 }
 
@@ -63,7 +65,7 @@ $test(LocaleResolver::resolve(['app' => []], null, null, 'en') === 'en', 'old co
 
 $versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md', 'CHANGELOG.ja.md'];
 foreach ($versionFiles as $file) {
-    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.6.3'), "version reference: {$file}");
+    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.7.0'), "version reference: {$file}");
 }
 
 $english = require dirname(__DIR__) . '/app/i18n/en.php';
@@ -77,6 +79,7 @@ $test($en->get('nav.sessions') === 'Sessions' && $ja->get('nav.sessions') === '�
 $test($en->get('nav.events') === 'Events' && $ja->get('nav.events') === 'イベント', 'bilingual Events navigation');
 $test($en->get('nav.metadata') === 'Knowledge' && $ja->get('nav.metadata') === 'ナレッジ', 'bilingual Knowledge navigation');
 $test($en->get('nav.exclusions') === 'Exclusions' && $ja->get('nav.exclusions') === '除外ルール', 'bilingual Exclusions navigation');
+$test($en->get('nav.lifecycle') === 'Lifecycle & Export' && $ja->get('nav.lifecycle') === '保存・エクスポート', 'bilingual lifecycle navigation');
 $authSource=(string)file_get_contents(dirname(__DIR__).'/app/admin-auth.php');
 $test(str_contains($authSource,"return \$path === '/' ? '/' : rtrim(\$path, '/') . '/';"),'administrator session cookie reaches the collector path');
 
@@ -131,6 +134,28 @@ $test(str_contains($exclusionApi,'tyaa_require_auth')&&str_contains($exclusionAp
 $test(strpos($collector,'collectionDecision')<strpos($collector,'INSERT INTO tya_events'),'collection exclusion is evaluated before future storage');
 $test(str_contains($collector,'recordAnalysisMatches')&&str_contains(ExclusionRules::analysisSql('e'),'NOT EXISTS'),'analysis exclusion uses SQL match mapping');
 $test(str_contains($schema,'tya_exclusion_rules')&&str_contains($schema,'tya_event_exclusions'),'fresh schema includes exclusion rules and non-destructive historical matches');
+
+$test(AnalyticsExport::csvCell('=SUM(A1:A2)')==="'=SUM(A1:A2)"&&AnalyticsExport::csvCell("  +cmd")==="'  +cmd",'CSV spreadsheet-formula injection mitigation');
+$test(AnalyticsExport::csvCell('長い値'.str_repeat('文',1000))==='長い値'.str_repeat('文',1000),'CSV Unicode and long-field preservation');
+$test(AnalyticsExport::maskIp('203.0.113.77')==='203.0.113.0/24','IPv4 export masking');
+$test(str_ends_with(AnalyticsExport::maskIp('2001:db8:1234:5678::1'),'/48'),'IPv6 export masking');
+$test(LogLifecycle::validateRetention('unlimited')===null&&LogLifecycle::validateRetention(30)===30&&LogLifecycle::validateRetention(365)===365,'retention unlimited and presets');
+$test(LogLifecycle::validateRetention(730)===730,'custom retention validation');
+$invalid=false;try{LogLifecycle::validateRetention(0);}catch(InvalidArgumentException){$invalid=true;}$test($invalid,'invalid custom retention rejected');
+$lifecycleFile=sys_get_temp_dir().'/tya-lifecycle-'.bin2hex(random_bytes(5));$dummyPdo=new class extends PDO{public function __construct(){}};$lifecycleState=new LogLifecycle($dummyPdo,$lifecycleFile,90);$lifecycleState->saveRetention(180);$test($lifecycleState->state()['retention_days']===180,'retention state is atomically persisted');@unlink($lifecycleFile);
+$exportApi=(string)file_get_contents(dirname(__DIR__).'/public/admin/api/export.php');$lifecycleApi=(string)file_get_contents(dirname(__DIR__).'/public/admin/api/lifecycle.php');$lifecycleService=(string)file_get_contents(dirname(__DIR__).'/app/core/src/LogLifecycle.php');$exportService=(string)file_get_contents(dirname(__DIR__).'/app/core/src/AnalyticsExport.php');$cleanupCli=(string)file_get_contents(dirname(__DIR__).'/bin/cleanup.php');
+$test(str_contains($exportApi,'tyaa_require_auth')&&str_contains($exportApi,'tyaa_verify_csrf'),'export requires authentication and CSRF');
+$test(str_contains($exportApi,"'schema':'tenyen.analytics.export.v1")||str_contains($exportApi,'tenyen.analytics.export.v1'),'stable JSON export schema');
+$test(str_contains($exportApi,'while($row=$stmt->fetch())')&&str_contains($exportService,'MYSQL_ATTR_USE_BUFFERED_QUERY'),'large exports stream with unbuffered row fetching');
+$test(str_contains($exportApi,"if(\$first){do{")&&str_contains($exportApi,'fputcsv($output,$columns)'),'empty CSV export retains stable headers');
+$test(str_contains($exportApi,'EXPORT_RAW_IP')&&str_contains($exportApi,"\$ipMode==='raw'"),'raw IP export requires explicit authorized confirmation');
+$test(str_contains($exportService,'ExclusionRules::analysisSql')&&str_contains($exportService,"'tag_id'")&&str_contains($exportService,"'watched'"),'filtered exports respect exclusions and administrator metadata filters');
+$test(str_contains($lifecycleApi,'tyaa_require_auth')&&str_contains($lifecycleApi,'tyaa_verify_csrf'),'lifecycle API requires authentication and CSRF');
+$test(str_contains($lifecycleService,'SELECT COUNT(*) events')&&str_contains($lifecycleService,'COUNT(DISTINCT NULLIF(session_id'), 'cleanup dry-run reports affected event and session counts');
+$test(str_contains($lifecycleService,'LOCK_EX|LOCK_NB')&&str_contains($lifecycleService,'LIMIT {$batchSize}')&&str_contains($lifecycleService,"?'paused':'success'")&&str_contains($lifecycleService,"==='running'"),'cleanup uses overlap lock, bounded batches, and resumable state');
+$test(str_contains($cleanupCli,"\$command==='scheduled'")&&str_contains($lifecycleService,'next_run'),'scheduled cleanup uses the protected CLI entry point');
+$test(str_contains($lifecycleService,'information_schema.TABLES')&&str_contains($lifecycleService,"DATE_FORMAT(occurred_at,'%Y-%m')"),'storage diagnostics include sizes and monthly counts');
+$test(!str_contains($lifecycleService,'DELETE FROM tya_annotations')&&!str_contains($lifecycleService,'DELETE FROM tya_saved_views'),'cleanup preserves annotations and saved views');
 
 $test(TrafficAttribution::classify('/landing', '', 'https://example.com')['channel'] === 'Direct', 'direct traffic attribution');
 $test(TrafficAttribution::classify('/landing', 'https://example.com/from', 'https://example.com')['channel'] === 'Internal', 'internal traffic attribution');
