@@ -2,6 +2,29 @@ English | [日本語](CHANGELOG.ja.md)
 
 # Changelog
 
+## 0.7.1 - 2026-08-25
+
+### Added
+
+- Added transactional daily totals for pageviews, estimated visitors, sessions, bounces, entries/exits, events, Human/Bot, and engagement/scroll sums with their sample counts.
+- Added bounded daily content, channel, referrer, campaign, country, ASN/organization, and event dimensions plus checkpointed incremental, day, range, and resumable rebuild commands.
+- Added authenticated, CSRF-protected aggregate controls and status to Lifecycle, and raw-only, aggregate-only, or mixed dashboard reporting with a non-overlapping day boundary.
+
+### Changed
+
+- Cleanup now aligns retention to a complete local-day boundary and blocks raw deletion until every eligible day has aggregate coverage.
+- Long-range dashboard means are calculated from stored numerators and denominators; daily estimated visitors are explicitly documented instead of averaging or implying cross-day exactness.
+
+### Performance and security
+
+- Added purpose-built aggregate primary/range indexes while leaving raw-event indexes unchanged because no representative production MySQL dataset was available for `EXPLAIN` evidence.
+- Aggregate jobs process at most 31 days per request, bound rebuild ranges to 730 days, use prepared SQL and allowlisted dimensions/actors, and expose no public maintenance endpoint or internal error details.
+
+### Compatibility
+
+- Adds `tya_daily_metrics`, `tya_daily_dimensions`, and `tya_aggregate_state` through the existing idempotent migration. Existing raw facts and all configuration, credentials, keys, MMDB files, metadata, exclusions, and lifecycle state remain unchanged.
+- Detailed session/visitor drill-down remains raw-data dependent. Analysis-rule changes require rebuilding affected days while raw data remains available.
+
 ## 0.7.0 - 2026-08-25
 
 ### Added

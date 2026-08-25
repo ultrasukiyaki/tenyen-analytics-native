@@ -1,6 +1,6 @@
 # Log lifecycle, export, and retention
 
-Version 0.7.0 adds authenticated CSV/JSON export, raw-log retention, bounded cleanup, and storage diagnostics. Daily aggregates are not available until v0.7.1, so deleting raw events in v0.7.0 permanently removes their detailed and statistical history.
+Version 0.7.0 added authenticated CSV/JSON export, raw-log retention, bounded cleanup, and storage diagnostics. Version 0.7.1 now blocks cleanup until daily aggregate coverage preserves eligible days; detailed session and visitor drill-down still disappears with deleted raw events. See [Daily aggregation and performance](DAILY_AGGREGATION.md).
 
 ## Export
 

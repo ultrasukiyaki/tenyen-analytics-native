@@ -17,6 +17,7 @@ The application stores analytics on infrastructure you control. It does not use 
 - Bot detection, organization classification, and twelve asynchronous admin views
 - Collection and analysis exclusion rules with deterministic diagnostics
 - Streaming CSV/JSON export, retention-safe cleanup controls, and storage diagnostics
+- Retention-safe daily aggregates with resumable rebuilds and hybrid long-range reports
 - English and standard-Japanese interfaces
 
 ## Requirements
@@ -67,6 +68,10 @@ Version 0.6.3 adds authenticated management and diagnostics for exact IP, CIDR, 
 
 Version 0.7.0 streams filtered access logs, sessions, content, organizations, traffic sources, campaigns, and events as CSV or stable-schema JSON. IPs are omitted by default, with masked and explicitly confirmed raw modes. Retention supports unlimited, presets, and validated custom days; cleanup provides preview counts, an overlap lock, bounded transactions, resumable state, CLI scheduling, and storage diagnostics. See [Log lifecycle, export, and retention](docs/LOG_LIFECYCLE.md).
 
+## Daily aggregation
+
+Version 0.7.1 stores completed local-day totals and bounded content, channel, referrer, campaign, country, ASN/organization, and event dimensions. Dashboard date reports combine covered aggregate days with uncovered raw days at a non-overlapping boundary. Rebuilds are idempotent, checkpointed, limited to 31 days per invocation, and resumable. Cleanup is blocked until every eligible raw day has aggregate coverage. See [Daily aggregation and performance](docs/DAILY_AGGREGATION.md).
+
 ## Event and campaign integration
 
 Automatic external-link and download tracking remains enabled. Internal links can be enabled with `track_internal_links`; buttons require both `track_buttons` and `data-tenyen-event="name"`; forms require `track_forms` and the same explicit attribute. Form values, DOM content, passwords, and payment data are never collected.
@@ -79,13 +84,13 @@ Channels are Direct, Organic Search, Social, Referral, Internal, Campaign, and U
 
 ## CLI tools
 
-Run `php bin/doctor.php` for diagnostics, `php bin/cleanup.php` for retention cleanup, `php bin/generate-secrets.php` for credentials, or `php bin/install.php` for CLI installation guidance.
+Run `php bin/doctor.php` for diagnostics, `php bin/aggregate.php incremental` for daily rollups, `php bin/cleanup.php` for retention cleanup, `php bin/generate-secrets.php` for credentials, or `php bin/install.php` for CLI installation guidance.
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.6.3 to v0.7.0 adds no database tables or indexes. Existing configuration, installation lock, administrator/database credentials, site token, encryption/HMAC keys, language preference, MMDB files, events, sessions, exclusion rules, metadata, tags, and saved views remain supported. Lifecycle state is stored under `storage/`.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, and `storage/`. Upgrading from v0.7.0 to v0.7.1 adds `tya_daily_metrics`, `tya_daily_dimensions`, and `tya_aggregate_state` with purpose-built primary/range indexes. Existing configuration, installation lock, administrator/database credentials, site token, encryption/HMAC keys, language preference, MMDB files, events, sessions, lifecycle state, exclusion rules, metadata, tags, and saved views remain supported. Run the initial aggregate before cleanup.
 
-Bounce rate remains one-page entry sessions divided by entry sessions. Click rate is sessions with a matching click from a source page divided by sessions containing a qualifying pageview of that source page; a zero denominator returns 0%. Notifications, daily aggregation, multi-site, and roles are deferred.
+Bounce rate remains one-page entry sessions divided by entry sessions. Engagement averages are calculated from preserved sums and sample counts, never by averaging daily averages. Daily distinct visitors are estimates and can count the same anonymous browser again on another day. Notifications, multi-site, and roles remain deferred.
 
 ## Privacy and security
 

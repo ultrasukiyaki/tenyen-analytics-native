@@ -14,6 +14,7 @@ use Tenyen\Analytics\AdminMetadata;
 use Tenyen\Analytics\ExclusionRules;
 use Tenyen\Analytics\AnalyticsExport;
 use Tenyen\Analytics\LogLifecycle;
+use Tenyen\Analytics\DailyAggregation;
 
 $failures = 0;
 $test = static function (bool $condition, string $message) use (&$failures): void {
@@ -65,7 +66,7 @@ $test(LocaleResolver::resolve(['app' => []], null, null, 'en') === 'en', 'old co
 
 $versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md', 'CHANGELOG.ja.md'];
 foreach ($versionFiles as $file) {
-    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.7.0'), "version reference: {$file}");
+    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.7.1'), "version reference: {$file}");
 }
 
 $english = require dirname(__DIR__) . '/app/i18n/en.php';
@@ -156,6 +157,31 @@ $test(str_contains($lifecycleService,'LOCK_EX|LOCK_NB')&&str_contains($lifecycle
 $test(str_contains($cleanupCli,"\$command==='scheduled'")&&str_contains($lifecycleService,'next_run'),'scheduled cleanup uses the protected CLI entry point');
 $test(str_contains($lifecycleService,'information_schema.TABLES')&&str_contains($lifecycleService,"DATE_FORMAT(occurred_at,'%Y-%m')"),'storage diagnostics include sizes and monthly counts');
 $test(!str_contains($lifecycleService,'DELETE FROM tya_annotations')&&!str_contains($lifecycleService,'DELETE FROM tya_saved_views'),'cleanup preserves annotations and saved views');
+
+$aggregationService=(string)file_get_contents(dirname(__DIR__).'/app/core/src/DailyAggregation.php');$schema=(string)file_get_contents(dirname(__DIR__).'/app/schema.php');$aggregateCli=(string)file_get_contents(dirname(__DIR__).'/bin/aggregate.php');
+$test(DailyAggregation::validateDay('2026-08-24')==='2026-08-24','first daily aggregate accepts a complete date');
+$badDay=false;try{DailyAggregation::validateDay('2026-02-30');}catch(InvalidArgumentException){$badDay=true;}$test($badDay,'aggregate dates are strictly validated');
+$test(str_contains($aggregationService,'DELETE FROM tya_daily_dimensions WHERE metric_day=?')&&str_contains($aggregationService,'ON DUPLICATE KEY UPDATE'),'idempotent rerun replaces dimensions and upserts one daily metric');
+$test(str_contains($schema,'PRIMARY KEY (metric_day, actor)')&&str_contains($schema,'PRIMARY KEY (metric_day, actor, dimension_type, dimension_hash)'),'daily aggregate duplicate prevention');
+$rawOnly=DailyAggregation::partitionDays('2026-08-01','2026-08-03',null,null);$test($rawOnly['aggregate']===null&&$rawOnly['raw']===[['2026-08-01','2026-08-03']],'raw-only report boundary');
+$aggregateOnly=DailyAggregation::partitionDays('2026-08-01','2026-08-03','2026-07-01','2026-08-20');$test($aggregateOnly['aggregate']===['2026-08-01','2026-08-03']&&$aggregateOnly['raw']===[],'aggregate-only report boundary');
+$mixed=DailyAggregation::partitionDays('2026-08-01','2026-08-10','2026-08-03','2026-08-08');$test($mixed['aggregate']===['2026-08-03','2026-08-08']&&$mixed['raw']===[['2026-08-01','2026-08-02'],['2026-08-09','2026-08-10']],'mixed raw and aggregate boundary');
+$coveredDays=array_merge(range(1,2),range(3,8),range(9,10));$test(count($coveredDays)===10,'raw and aggregate ranges do not double count a day');
+$test(str_contains($aggregationService,'rebuildDay')&&str_contains($aggregationService,'rebuildRange'),'day and range rebuild');
+$test(str_contains($aggregationService,"'paused'")&&str_contains($aggregationService,'next_day')&&str_contains($aggregateCli,"'resume'"),'interrupted rebuild resumes from checkpoint');
+$test(str_contains($aggregationService,"status['last_complete_day']")&&str_contains($aggregationService,'rebuildRange($from, $yesterday'),'incremental aggregation rebuilds the last complete day for late events');
+$test(str_contains($lifecycleService,'verifyCoverage')&&str_contains($lifecycleService,"if(!\$coverage['complete'])"),'cleanup is blocked on incomplete aggregate coverage');
+$test(str_contains($lifecycleService,"if(!\$coverage['complete'])throw")&&str_contains($aggregationService,"'complete' => true"),'cleanup proceeds only after complete coverage');
+$test(DailyAggregation::ratio(9000,3)===3000.0&&DailyAggregation::ratio(10,0)===0.0,'engagement means retain numerator and denominator');
+$test(str_contains($aggregationService,'SUM(pageviews=1) bounces')&&str_contains($aggregationService,'entries')&&str_contains($aggregationService,'exits'),'visitor session bounce entry and exit formulas');
+$test(str_contains($aggregationService,"'campaign'")&&str_contains($aggregationService,"'organization'")&&str_contains($aggregationService,"'event'"),'bounded campaign organization and event totals');
+$test(str_contains($aggregationService,'ExclusionRules::analysisSql')&&str_contains($schema,'tya_daily_dimensions'),'daily aggregation respects analysis exclusions');
+$test(str_contains($aggregationService,"'organization'")&&str_contains($aggregationService,'CAST(asn AS CHAR)')&&!str_contains($aggregationService,'DELETE FROM tya_annotations'),'aggregate organization identities preserve current tags and watchlists');
+$test(str_contains($aggregationService,"'limit' => 200")&&str_contains($aggregationService,'LIMIT {$limit}'),'high-cardinality dimensions are bounded for long-range performance');
+$longRange=DailyAggregation::partitionDays('2024-08-26','2026-08-25','2024-08-26','2026-08-24');$test($longRange['aggregate']===['2024-08-26','2026-08-24']&&$longRange['raw']===[['2026-08-25','2026-08-25']],'long-range performance fixture uses one aggregate span and one raw edge');
+$test(str_contains($schema,'tya_daily_metrics')&&str_contains($schema,'tya_aggregate_state'),'baseline upgrade creates aggregate tables non-destructively');
+$test(str_contains($lifecycleService,'Daily aggregate coverage is incomplete')||str_contains($aggregationService,'Daily aggregate coverage is incomplete'),'historical totals are required before raw cleanup');
+$test(str_contains($lifecycleApi,'aggregate_range')&&str_contains($lifecycleApi,'tyaa_require_auth')&&str_contains($lifecycleApi,'tyaa_verify_csrf'),'aggregate maintenance API requires administrator authentication and CSRF');
 
 $test(TrafficAttribution::classify('/landing', '', 'https://example.com')['channel'] === 'Direct', 'direct traffic attribution');
 $test(TrafficAttribution::classify('/landing', 'https://example.com/from', 'https://example.com')['channel'] === 'Internal', 'internal traffic attribution');
