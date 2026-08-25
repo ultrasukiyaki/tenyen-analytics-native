@@ -2,6 +2,23 @@ English | [日本語](CHANGELOG.ja.md)
 
 # Changelog
 
+## 0.8.0 - 2026-08-25
+
+### Added
+
+- Added independent GeoLite2 City/ASN health, encrypted MaxMind credentials, weekly scheduling, manual update-now, locking, retry backoff, and trusted-host CLI operation.
+- Added a fixed-HTTPS download, bounded traversal-safe archive inspection, expected-MMDB extraction, existing-reader type/corruption validation, and atomic replacement pipeline.
+
+### Changed
+
+- Kept manual chunked MMDB upload and now records its health alongside automatic updates.
+- Added `.agents/` and `.codex/` to `.gitignore` while retaining the existing `/prompts/` exclusion.
+
+### Security and compatibility
+
+- License keys are encrypted at rest, masked in admin output, absent from public JavaScript/logs/packages, and accepted from the web only over HTTPS.
+- Failed updates retain the prior valid MMDB; City and ASN failures remain isolated. No database schema or analytics facts change from v0.7.1.
+
 ## 0.7.1 - 2026-08-25
 
 ### Added

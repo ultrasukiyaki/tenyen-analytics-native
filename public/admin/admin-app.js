@@ -122,6 +122,7 @@
     const response=await fetch(new URL('api/lifecycle.php',location.href),{method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-Token':config.csrf||''},body:JSON.stringify({action,...data})});
     const payload=await response.json();if(response.status===401){location.reload();throw new Error('Authentication required.');}if(!response.ok||payload.ok===false)throw new Error(payload.message||'The lifecycle operation failed.');return payload;
   }
+  async function geoLite2Request(action,data={}){const response=await fetch(new URL('api/geolite2.php',location.href),{method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-Token':config.csrf||''},body:JSON.stringify({action,...data})});const payload=await response.json();if(!response.ok||payload.ok===false)throw new Error(payload.message||`HTTP ${response.status}`);return payload;}
 
   function dialogShell(title) {
     const dialog = document.createElement('dialog');
@@ -266,6 +267,7 @@
     if(deleteExclusion&&confirm(t('common.confirm_delete'))){try{await exclusionRequest('delete',{rule_id:Number(deleteExclusion.dataset.deleteExclusion)});await load(new URL(location.href),{push:false});}catch(error){errorBox.textContent=error.message;errorBox.hidden=false;}return;}
     const lifecycleAction=event.target.closest('[data-lifecycle-action]');
     if(lifecycleAction){const result=lifecycleAction.closest('.panel')?.querySelector('[data-lifecycle-result]')||content.querySelector('[data-lifecycle-result]');if(lifecycleAction.dataset.lifecycleAction==='cleanup'&&!confirm(t('common.confirm_delete')))return;try{const payload=await lifecycleRequest(lifecycleAction.dataset.lifecycleAction);result.textContent=JSON.stringify(payload.preview||payload.cleanup||payload.aggregation,null,2);result.hidden=false;if(payload.cleanup||payload.aggregation)await load(new URL(location.href),{push:false});}catch(error){result.textContent=error.message;result.hidden=false;}return;}
+    const geoAction=event.target.closest('[data-geolite2-action]');if(geoAction){const result=geoAction.closest('.panel').querySelector('[data-geolite2-result]');try{const payload=await geoLite2Request(geoAction.dataset.geolite2Action,geoAction.dataset.kind?{kind:geoAction.dataset.kind}:{});result.textContent=JSON.stringify(payload.update,null,2);result.hidden=false;await load(new URL(location.href),{push:false});}catch(error){result.textContent=error.message;result.hidden=false;}return;}
     const copy = event.target.closest('[data-copy-code]');
     if (copy) {
       const text = copy.parentElement?.querySelector('code')?.textContent || '';
@@ -279,6 +281,7 @@
     if(exclusionForm){event.preventDefault();const data=Object.fromEntries(new FormData(exclusionForm));data.enabled=exclusionForm.elements.namedItem('enabled').checked;const note=exclusionForm.querySelector('[data-exclusion-status]');try{await exclusionRequest('save',data);await load(new URL(location.href),{push:false});}catch(error){note.textContent=error.message;}return;}
     const lifecycleForm=event.target.closest('[data-lifecycle-form]');
     if(lifecycleForm){event.preventDefault();const statusNote=lifecycleForm.querySelector('[data-lifecycle-status]');try{await lifecycleRequest(lifecycleForm.dataset.action,Object.fromEntries(new FormData(lifecycleForm)));await load(new URL(location.href),{push:false});}catch(error){if(statusNote)statusNote.textContent=error.message;else errorBox.textContent=error.message;}return;}
+    const geoForm=event.target.closest('[data-geolite2-form]');if(geoForm){event.preventDefault();const data=Object.fromEntries(new FormData(geoForm));data.enabled=geoForm.elements.namedItem('enabled').checked;const status=geoForm.querySelector('[data-geolite2-status]');try{await geoLite2Request('save',data);await load(new URL(location.href),{push:false});}catch(error){status.textContent=error.message;}return;}
     const diagnosticForm=event.target.closest('[data-exclusion-diagnostic]');
     if(diagnosticForm){event.preventDefault();const result=diagnosticForm.querySelector('[data-exclusion-result]');try{const payload=await exclusionRequest('diagnose',Object.fromEntries(new FormData(diagnosticForm)));result.textContent=JSON.stringify(payload.diagnostic,null,2);result.hidden=false;}catch(error){result.textContent=error.message;result.hidden=false;}return;}
     const languageForm = event.target.closest('[data-language-form]');

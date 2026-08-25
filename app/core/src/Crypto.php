@@ -57,6 +57,8 @@ final class Crypto
         throw new RuntimeException('Neither Sodium nor OpenSSL is available.');
     }
 
+    public function encryptSecret(string $secret): string { return $this->encryptIp($secret); }
+
     public function decryptIp(?string $payload): string
     {
         if ($payload === null || $payload === '') {
@@ -91,4 +93,6 @@ final class Crypto
 
         return '';
     }
+
+    public function decryptSecret(?string $payload): string { return $this->decryptIp($payload); }
 }
