@@ -67,7 +67,7 @@ $test(LocaleResolver::resolve(['app' => []], null, null, 'en') === 'en', 'old co
 
 $versionFiles = ['app/core/src/Installer.php', 'public/admin/index.php', 'public/install/index.php', 'app/admin-auth.php', 'bin/doctor.php', 'tools/build-release.sh', 'README.md', 'README.ja.md', 'CHANGELOG.md', 'CHANGELOG.ja.md'];
 foreach ($versionFiles as $file) {
-    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.8.0'), "version reference: {$file}");
+    $test(str_contains((string)file_get_contents(dirname(__DIR__) . '/' . $file), '0.8.1'), "version reference: {$file}");
 }
 
 $english = require dirname(__DIR__) . '/app/i18n/en.php';
@@ -189,26 +189,187 @@ $badCredentials=false;try{GeoLite2Updater::validateAccountId('');}catch(InvalidA
 $test(GeoLite2Updater::validateAccountId('123456')==='123456'&&GeoLite2Updater::validateLicenseKey('abcdefghijklmnop')==='abcdefghijklmnop','valid MaxMind credentials');
 $test(GeoLite2Updater::maskSecret('abcdefghijklmnop')==='••••••••mnop','GeoLite2 secret masking');
 $geoRoot=sys_get_temp_dir().'/tya-geo-'.bin2hex(random_bytes(5));mkdir($geoRoot);mkdir($geoRoot.'/storage');mkdir($geoRoot.'/data');$geoCrypto=new \Tenyen\Analytics\Crypto('test-encryption-secret','test-hash-secret');$geoSettings=new GeoLite2Updater($geoRoot,['geoip'=>['city_database'=>$geoRoot.'/data/GeoLite2-City.mmdb','asn_database'=>$geoRoot.'/data/GeoLite2-ASN.mmdb']],$geoCrypto);$savedGeo=$geoSettings->saveSettings('123456','abcdefghijklmnop',true);$credentialPayload=(string)file_get_contents($geoRoot.'/storage/geolite2-credentials.json');$test($savedGeo['configured']===true&&!str_contains($credentialPayload,'abcdefghijklmnop'),'GeoLite2 credentials are encrypted at rest');@unlink($geoRoot.'/storage/geolite2-credentials.json');@unlink($geoRoot.'/storage/geolite2-state.json');@rmdir($geoRoot.'/storage');@rmdir($geoRoot.'/data');@rmdir($geoRoot);
-$test(str_contains($geoUpdater,"'city'=>'GeoLite2-City'")&&str_contains($geoCli,"update('city')"),'successful City update pipeline');
-$test(str_contains($geoUpdater,"'asn'=>'GeoLite2-ASN'")&&str_contains($geoCli,"update('asn')"),'successful ASN update pipeline');
-$test(str_contains($geoUpdater,'foreach(array_keys(self::EDITIONS)')&&str_contains($geoUpdater,"'partial_failure'"),'City-only and ASN-only failures remain independent');
+$test(str_contains($geoUpdater,"'city' => 'GeoLite2-City'")&&str_contains($geoCli,"update('city')"),'successful City update pipeline');
+$test(str_contains($geoUpdater,"'asn' => 'GeoLite2-ASN'")&&str_contains($geoCli,"update('asn')"),'successful ASN update pipeline');
+$test(str_contains($geoUpdater,'foreach (array_keys(self::EDITIONS)')&&str_contains($geoUpdater,"'partial_failure'"),'City-only and ASN-only failures remain independent');
 $test(str_contains($geoUpdater,'The GeoLite2 archive is invalid.'),'invalid archive rejection');
 $test(str_contains($geoUpdater,'The expected MMDB is missing from the archive.'),'missing expected MMDB rejection');
 $test(str_contains($geoUpdater,'wrong database type'),'wrong MMDB type rejection');
 $test(str_contains($geoUpdater,'corrupt or unreadable'),'corrupt MMDB rejection');
 $test(str_contains($geoUpdater,'.incoming-')&&str_contains($geoUpdater,'.previous'),'atomic MMDB replacement');
-$test(str_contains($geoUpdater,'Could not preserve the current MMDB')&&str_contains($geoUpdater,'@rename($backup,$destination)'),'old MMDB retained on replacement failure');
-$test(str_contains($geoUpdater,'cleanupTemps')&&str_contains($geoUpdater,'time()-86400'),'stale GeoLite2 temporary-file cleanup');
+$test(str_contains($geoUpdater,'Could not preserve the current MMDB')&&str_contains($geoUpdater,'@rename($backup, $destination)'),'old MMDB retained on replacement failure');
+$test(str_contains($geoUpdater,'cleanupTemps')&&str_contains($geoUpdater,'time() - 86400'),'stale GeoLite2 temporary-file cleanup');
 $test(str_contains($manualUpload,'GeoLite2Updater')&&str_contains($manualUpload,'recordManual'),'manual MMDB upload compatibility');
-$test(str_contains($geoUpdater,"'enabled'=>filter_var")&&str_contains($geoUpdater,"state['next_run']"),'automatic update enable and disable');
-$test(str_contains($geoUpdater,'LOCK_EX|LOCK_NB')&&str_contains($geoUpdater,'retry_count')&&str_contains($geoUpdater,'7*86400'),'schedule lock and retry backoff');
+$test(str_contains($geoUpdater,"'enabled' => filter_var")&&str_contains($geoUpdater,"state['next_run']"),'automatic update enable and disable');
+$test(str_contains($geoUpdater,'LOCK_EX | LOCK_NB')&&str_contains($geoUpdater,'retry_count')&&str_contains($geoUpdater,'7 * 86400'),'schedule lock and retry backoff');
 $test(str_contains((string)$adminViews,'data-geolite2-form')&&str_contains((string)$adminViews,"['health']"),'GeoLite2 status UI');
 $test(!preg_match('/error_log\([^\n]*(license|account_id)/i',$geoUpdater.$geoApi.$manualUpload),'GeoLite2 secret absent from logs');
 $test(!GeoLite2Updater::validateArchivePath('../secret')&&!GeoLite2Updater::validateArchivePath('/absolute')&&GeoLite2Updater::validateArchivePath('GeoLite2-City/GeoLite2-City.mmdb'),'archive traversal rejection');
 $test(str_contains($geoApi,'tyaa_require_auth')&&str_contains($geoApi,'tyaa_verify_csrf')&&str_contains($geoApi,'require HTTPS'),'GeoLite2 API authentication CSRF and HTTPS enforcement');
-$test(str_contains($geoUpdater,"'https://download.maxmind.com/app/geoip_download?'")&&str_contains($geoUpdater,'CURLPROTO_HTTPS')&&!str_contains($geoApi,'download_url'),'fixed HTTPS MaxMind endpoint');
+$test(str_contains($geoUpdater,"private const AUTH_BASE = 'https://download.maxmind.com/geoip/databases/'")&&str_contains($geoUpdater,'CURLPROTO_HTTPS')&&!str_contains($geoApi,'download_url'),'fixed HTTPS MaxMind endpoint');
 $test(str_contains($buildScript,"! -name '*.mmdb'")&&str_contains($buildScript,"! -path './storage/*'"),'release package excludes MMDB credentials and state');
 $test(str_contains($geoCli,"'scheduled'")&&str_contains($geoUpdater,'due()'),'Native scheduled GeoLite2 update command');
+
+$r2Host=GeoLite2Updater::deliveryHosts()[0];
+$signedUrl='https://'.$r2Host.'/city.tar.gz?X-Amz-Signature=transient-test-value';
+$protocolRun=static function(array $responses,string $kind='city')use($geoCrypto):array{
+    $calls=[];$index=0;
+    $double=static function(string $url,string $target,?array $credentials,int $limit)use(&$calls,&$index,$responses):array{
+        $calls[]=[
+            'url'=>$url,
+            'authenticated'=>$credentials!==null,
+            'account_ok'=>$credentials!==null&&$credentials['account_id']==='123456',
+            'license_ok'=>$credentials!==null&&$credentials['license_key']==='abcdefghijklmnop',
+        ];
+        $response=$responses[$index++]??['status'=>0];
+        file_put_contents($target,str_repeat('A',2048));
+        return $response+['bytes'=>2048];
+    };
+    $root=sys_get_temp_dir().'/tya-geo-protocol-'.bin2hex(random_bytes(5));mkdir($root);mkdir($root.'/storage');mkdir($root.'/data');
+    $updater=new GeoLite2Updater($root,['geoip'=>['city_database'=>$root.'/data/GeoLite2-City.mmdb','asn_database'=>$root.'/data/GeoLite2-ASN.mmdb']],$geoCrypto,$double);
+    $target=$root.'/storage/protocol.tar.gz';$error=null;
+    try{$method=new ReflectionMethod(GeoLite2Updater::class,'download');$method->setAccessible(true);$method->invoke($updater,$kind,['account_id'=>'123456','license_key'=>'abcdefghijklmnop'],$target);}
+    catch(Throwable $caught){$error=$caught->getMessage();}
+    $exists=is_file($target);@unlink($target);@rmdir($root.'/storage');@rmdir($root.'/data');@rmdir($root);
+    return ['calls'=>$calls,'error'=>$error,'exists'=>$exists];
+};
+
+$direct=$protocolRun([['status'=>200]]);
+$test($direct['error']===null&&count($direct['calls'])===1&&$direct['calls'][0]['authenticated'],'direct MaxMind 200 archive response');
+$redirected=$protocolRun([['status'=>302,'location'=>$signedUrl],['status'=>200]]);
+$test($redirected['error']===null&&count($redirected['calls'])===2,'authenticated 302 followed by artifact 200');
+$test($redirected['calls'][0]['account_ok']&&$redirected['calls'][0]['license_ok'],'first request contains correct Basic Authentication inputs');
+$test(!$redirected['calls'][1]['authenticated'],'second request contains no Authorization or cURL authentication inputs');
+$test(str_contains($geoUpdater,'$curl = curl_init($url)')&&str_contains($geoUpdater,'if ($credentials !== null)'),'fresh cURL handle and conditional authentication boundary');
+
+$encodeText=static fn(string $value):string=>chr((2<<5)|strlen($value)).$value;
+$encodeUint=static function(int $value):string{$bytes=ltrim(pack('N',$value),"\0");if($bytes==='')$bytes="\0";return chr((6<<5)|strlen($bytes)).$bytes;};
+$makeMmdb=static function(string $type)use($encodeText,$encodeUint):string{
+    $metadata=chr((7<<5)|5)
+        .$encodeText('node_count').$encodeUint(1)
+        .$encodeText('record_size').$encodeUint(24)
+        .$encodeText('ip_version').$encodeUint(4)
+        .$encodeText('database_type').$encodeText($type)
+        .$encodeText('build_epoch').$encodeUint(time());
+    return random_bytes(2048)."\xAB\xCD\xEFMaxMind.com".$metadata;
+};
+$integrationRoot=sys_get_temp_dir().'/tya-geo-integration-'.bin2hex(random_bytes(5));mkdir($integrationRoot);mkdir($integrationRoot.'/storage');mkdir($integrationRoot.'/data');
+$archives=[];
+foreach(['city'=>'GeoLite2-City','asn'=>'GeoLite2-ASN'] as $fixtureKind=>$fixtureType){
+    $tar=$integrationRoot.'/'.$fixtureKind.'.tar';$phar=new PharData($tar);
+    $phar->addFromString($fixtureType.'_test/'.$fixtureType.'.mmdb',$makeMmdb($fixtureType));
+    $phar->compress(Phar::GZ);unset($phar);$archives[$fixtureKind]=(string)file_get_contents($tar.'.gz');@unlink($tar);@unlink($tar.'.gz');
+}
+$integrationCalls=[];
+$integrationDouble=static function(string $url,string $target,?array $credentials)use(&$integrationCalls,$archives,$r2Host):array{
+    $kind=str_contains($url,'ASN')||str_contains($url,'/asn-')?'asn':'city';$integrationCalls[]=['kind'=>$kind,'authenticated'=>$credentials!==null];
+    if($credentials!==null){file_put_contents($target,'redirect');return ['status'=>302,'location'=>'https://'.$r2Host.'/'.$kind.'-artifact?signature=test','bytes'=>8];}
+    file_put_contents($target,$archives[$kind]);return ['status'=>200,'bytes'=>strlen($archives[$kind])];
+};
+$integrationConfig=['geoip'=>['city_database'=>$integrationRoot.'/data/GeoLite2-City.mmdb','asn_database'=>$integrationRoot.'/data/GeoLite2-ASN.mmdb']];
+$integrationUpdater=new GeoLite2Updater($integrationRoot,$integrationConfig,$geoCrypto,$integrationDouble);
+$integrationUpdater->saveSettings('123456','abcdefghijklmnop',true);
+$cityIntegrated=$integrationUpdater->update('city');$asnIntegrated=$integrationUpdater->update('asn');
+$test($cityIntegrated['ok']===true&&is_file($integrationConfig['geoip']['city_database']),'successful City redirect download extraction validation and activation');
+$test($asnIntegrated['ok']===true&&is_file($integrationConfig['geoip']['asn_database']),'successful ASN redirect download extraction validation and activation');
+$test($integrationCalls===[
+    ['kind'=>'city','authenticated'=>true],['kind'=>'city','authenticated'=>false],
+    ['kind'=>'asn','authenticated'=>true],['kind'=>'asn','authenticated'=>false],
+],'City and ASN use separate authenticated and credential-free requests');
+foreach(glob($integrationRoot.'/storage/geolite2/*')?:[] as $file)@unlink($file);@rmdir($integrationRoot.'/storage/geolite2');
+foreach(glob($integrationRoot.'/storage/*')?:[] as $file)@unlink($file);foreach(glob($integrationRoot.'/data/*')?:[] as $file)@unlink($file);
+@rmdir($integrationRoot.'/storage');@rmdir($integrationRoot.'/data');@rmdir($integrationRoot);
+
+foreach([301,302,303,307,308] as $redirectCode){
+    $handled=$protocolRun([['status'=>$redirectCode,'location'=>$signedUrl],['status'=>200]]);
+    $test($handled['error']===null,"supported MaxMind redirect {$redirectCode}");
+}
+
+$test(GeoLite2Updater::validateRedirectUrl($signedUrl)===$signedUrl,'documented exact R2 host accepted');
+$test(GeoLite2Updater::validateRedirectUrl('https://'.$r2Host.':443/file')==='https://'.$r2Host.':443/file','explicit HTTPS port 443 accepted');
+$badRedirects=[
+    'http rejected'=>'http://'.$r2Host.'/file',
+    'arbitrary host rejected'=>'https://example.com/file',
+    'broad Cloudflare host rejected'=>'https://other.r2.cloudflarestorage.com/file',
+    'deceptive suffix host rejected'=>'https://'.$r2Host.'.evil.example/file',
+    'deceptive prefix host rejected'=>'https://evil'.$r2Host.'/file',
+    'user-info URL rejected'=>'https://user@'.$r2Host.'/file',
+    'user-password URL rejected'=>'https://user:pass@'.$r2Host.'/file',
+    'non-standard port rejected'=>'https://'.$r2Host.':444/file',
+    'fragment rejected'=>'https://'.$r2Host.'/file#secret',
+    'relative URL rejected'=>'/artifact/file',
+    'empty Location rejected'=>'',
+    'malformed URL rejected'=>'https://[',
+    'trailing-dot bypass rejected'=>'https://'.$r2Host.'./file',
+];
+foreach($badRedirects as $label=>$candidate){
+    $rejected=false;try{GeoLite2Updater::validateRedirectUrl($candidate);}catch(RuntimeException){$rejected=true;}
+    $test($rejected,$label);
+}
+$missing=$protocolRun([['status'=>302]]);
+$test($missing['error']==='GeoLite2 redirect is missing or invalid.','missing Location rejected');
+$loop=$protocolRun([['status'=>302,'location'=>$signedUrl],['status'=>302,'location'=>$signedUrl]]);
+$test($loop['error']==='GeoLite2 redirect loop was rejected.','redirect loop rejected');
+$hopUrls=[];for($hop=1;$hop<=4;$hop++)$hopUrls[]='https://'.$r2Host.'/file?hop='.$hop;
+$limit=$protocolRun([
+    ['status'=>302,'location'=>$hopUrls[0]],
+    ['status'=>302,'location'=>$hopUrls[1]],
+    ['status'=>302,'location'=>$hopUrls[2]],
+    ['status'=>302,'location'=>$hopUrls[3]],
+]);
+$test($limit['error']==='GeoLite2 redirect limit was exceeded.','redirect hop limit enforced');
+$secondUntrusted=$protocolRun([
+    ['status'=>302,'location'=>$signedUrl],
+    ['status'=>307,'location'=>'https://example.com/file'],
+]);
+$test($secondUntrusted['error']==='GeoLite2 redirect host or scheme is not trusted.','second-hop untrusted redirect rejected');
+
+$artifact400=$protocolRun([['status'=>302,'location'=>$signedUrl],['status'=>400]]);
+$test($artifact400['error']==='GeoLite2 artifact request failed with HTTP 400.','artifact HTTP 400 safely classified');
+$httpCases=[
+    401=>'MaxMind rejected the account ID or license key.',
+    403=>'MaxMind credentials do not permit this database.',
+    429=>'MaxMind rate limit reached. Retry later.',
+    500=>'GeoLite2 authentication request failed with HTTP 500.',
+];
+foreach($httpCases as $status=>$message){
+    $classified=$protocolRun([['status'=>$status]]);
+    $test($classified['error']===$message,"safe HTTP {$status} classification");
+}
+$oversized=$protocolRun([['status'=>200,'bytes'=>157286401]]);
+$test($oversized['error']==='GeoLite2 download exceeded the archive size limit.','oversized stream abort');
+$networkRoot=sys_get_temp_dir().'/tya-geo-network-'.bin2hex(random_bytes(5));mkdir($networkRoot);mkdir($networkRoot.'/storage');mkdir($networkRoot.'/data');
+$networkDouble=static function():array{throw new RuntimeException('GeoLite2 HTTPS request failed.');};
+$networkUpdater=new GeoLite2Updater($networkRoot,['geoip'=>[]],$geoCrypto,$networkDouble);
+$networkError=null;try{$method=new ReflectionMethod(GeoLite2Updater::class,'download');$method->setAccessible(true);$method->invoke($networkUpdater,'city',['account_id'=>'123456','license_key'=>'abcdefghijklmnop'],$networkRoot.'/storage/network.tar.gz');}catch(Throwable $caught){$networkError=$caught->getMessage();}
+$test($networkError==='GeoLite2 HTTPS request failed.','network TLS or timeout failure is sanitized');
+@unlink($networkRoot.'/storage/network.tar.gz');@rmdir($networkRoot.'/storage');@rmdir($networkRoot.'/data');@rmdir($networkRoot);
+
+$preserveRoot=sys_get_temp_dir().'/tya-geo-preserve-'.bin2hex(random_bytes(5));mkdir($preserveRoot);mkdir($preserveRoot.'/storage');mkdir($preserveRoot.'/data');
+$preserveConfig=['geoip'=>['city_database'=>$preserveRoot.'/data/GeoLite2-City.mmdb','asn_database'=>$preserveRoot.'/data/GeoLite2-ASN.mmdb']];
+$credentialUpdater=new GeoLite2Updater($preserveRoot,$preserveConfig,$geoCrypto);$credentialUpdater->saveSettings('123456','abcdefghijklmnop',true);
+file_put_contents($preserveRoot.'/data/GeoLite2-City.mmdb','existing-city-database');
+$failureIndex=0;$failureDouble=static function(string $url,string $target,?array $credentials)use(&$failureIndex,$signedUrl):array{file_put_contents($target,'failure');return $failureIndex++===0?['status'=>302,'location'=>$signedUrl,'bytes'=>7]:['status'=>400,'bytes'=>7];};
+$failureUpdater=new GeoLite2Updater($preserveRoot,$preserveConfig,$geoCrypto,$failureDouble);
+try{$failureUpdater->update('city');}catch(RuntimeException){}
+$preservedState=(string)file_get_contents($preserveRoot.'/storage/geolite2-state.json');
+$test(file_get_contents($preserveRoot.'/data/GeoLite2-City.mmdb')==='existing-city-database','failed request retains the old City database');
+$test(!str_contains($preservedState,'abcdefghijklmnop')&&!str_contains($preservedState,'X-Amz-'),'credentials and signed URL absent from persisted state');
+$publicGeoStatus=(string)json_encode($failureUpdater->publicStatus(),JSON_UNESCAPED_SLASHES);
+$test(!str_contains($publicGeoStatus,'123456')&&!str_contains($publicGeoStatus,'abcdefghijklmnop')&&!str_contains($publicGeoStatus,'X-Amz-'),'credentials and signed URL absent from public JSON status');
+$decodedPreserved=json_decode($preservedState,true);
+$test(($decodedPreserved['city']['status']??'')==='failed'&&($decodedPreserved['asn']['status']??'never')==='never','City failure leaves ASN state independent');
+$test(!str_contains($geoApi,'X-Amz-')&&!str_contains((string)$adminViews,'X-Amz-')&&!preg_match('/error_log\([^\n]*(Location|signed|license|account_id)/i',$geoUpdater.$geoApi),'signed URL and credentials absent from logs JSON and rendered UI');
+$failureIndex=0;$firstLockedRun=$failureUpdater->updateAll();$failureIndex=0;$secondLockedRun=$failureUpdater->updateAll();
+$test($firstLockedRun['status']==='partial_failure'&&$secondLockedRun['status']==='partial_failure','update lock released on every failure path');
+$credentialsBefore=json_decode((string)file_get_contents($preserveRoot.'/storage/geolite2-credentials.json'),true);
+$credentialUpdater->saveSettings('123456','',true);
+$credentialsAfter=json_decode((string)file_get_contents($preserveRoot.'/storage/geolite2-credentials.json'),true);
+$test($credentialUpdater->settings()['configured']===true&&$credentialsBefore['license_key']===$credentialsAfter['license_key'],'v0.8.0 encrypted credentials remain preserved and decryptable');
+$test(str_contains($buildScript,"! -path './.agents/*'")&&str_contains($buildScript,"! -path './.codex/*'")&&str_contains($buildScript,'geolite2-(credentials|state)'),'package excludes local agent and GeoLite2 state files');
+foreach(glob($preserveRoot.'/storage/geolite2/*')?:[] as $file)@unlink($file);
+@rmdir($preserveRoot.'/storage/geolite2');foreach(glob($preserveRoot.'/storage/*')?:[] as $file)@unlink($file);
+foreach(glob($preserveRoot.'/data/*')?:[] as $file)@unlink($file);@rmdir($preserveRoot.'/storage');@rmdir($preserveRoot.'/data');@rmdir($preserveRoot);
 
 $test(TrafficAttribution::classify('/landing', '', 'https://example.com')['channel'] === 'Direct', 'direct traffic attribution');
 $test(TrafficAttribution::classify('/landing', 'https://example.com/from', 'https://example.com')['channel'] === 'Internal', 'internal traffic attribution');

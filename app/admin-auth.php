@@ -158,14 +158,14 @@ function tyaa_render_login(array $config, string $error = ''): never
     echo '<!doctype html><html lang="' . $h($translator->htmlLang()) . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
         . '<title>Tenyen Analytics — ' . $h($translator->get('auth.login')) . '</title><style>'
         . ':root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1f2937;background:#eef2f7}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px}.card{width:min(440px,100%);background:#fff;border:1px solid #dbe3ed;border-radius:16px;padding:30px;box-shadow:0 15px 45px rgba(15,23,42,.1)}.brand{display:flex;gap:12px;align-items:center;margin-bottom:24px}.mark{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:#2563eb;color:#fff;font-size:25px;font-weight:800}.brand h1{font-size:22px;margin:0}.brand p{margin:3px 0 0;color:#64748b}.field{display:grid;gap:7px;margin:15px 0}.field label{font-weight:700}.field input{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}.button{width:100%;margin-top:12px;border:0;border-radius:8px;padding:12px;background:#2563eb;color:#fff;font-weight:700;font-size:15px;cursor:pointer}.alert{padding:12px 14px;border-radius:9px;margin:0 0 15px;line-height:1.6}.error{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}.warning{background:#fffbeb;color:#92400e;border:1px solid #fde68a}.hint{font-size:12px;color:#64748b;margin-top:16px;line-height:1.65}</style></head><body><main class="card">'
-        . '<div class="brand"><div class="mark">T</div><div><h1>Tenyen Analytics</h1><p>Administration v0.8.0</p></div></div>'
+        . '<div class="brand"><div class="mark">T</div><div><h1>Tenyen Analytics</h1><p>Administration v0.8.1</p></div></div>'
         . $errorHtml . $httpWarning
         . '<form method="post" autocomplete="on"><input type="hidden" name="tya_action" value="login"><input type="hidden" name="csrf" value="' . $csrf . '">'
         . '<div class="field"><label for="username">Username</label><input id="username" name="username" autocomplete="username" required autofocus></div>'
         . '<div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>'
         . '<button class="button" type="submit">' . $h($translator->get('auth.login')) . '</button></form>'
         . '<p class="hint">Authentication uses a protected PHP session. Basic Authentication remains available for compatible clients.</p>'
-        . '<p class="hint">Tenyen Analytics v0.8.0 — <a href="https://www.10yendama.com/" target="_blank" rel="noopener noreferrer">Powered by 10yendama.com</a> — © 2026 10yendama.com</p>'
+        . '<p class="hint">Tenyen Analytics v0.8.1 — <a href="https://www.10yendama.com/" target="_blank" rel="noopener noreferrer">Powered by 10yendama.com</a> — © 2026 10yendama.com</p>'
         . '</main></body></html>';
     exit;
 }
