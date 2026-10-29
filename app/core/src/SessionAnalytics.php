@@ -16,7 +16,7 @@ final class SessionAnalytics
     public function listSessions(array $filters): array
     {
         $perPage = in_array((int)($filters['per_page'] ?? 25), [25, 50, 100], true)
-            ? (int)$filters['per_page'] : 25;
+            ? (int)($filters['per_page'] ?? 25) : 25;
         $page = max(1, (int)($filters['page'] ?? 1));
         $direction = ($filters['order'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
         [$where, $params] = $this->eventWhere($filters, 'e');
@@ -97,14 +97,17 @@ final class SessionAnalytics
             return null;
         }
         $stmt = $this->pdo->prepare(
-            "SELECT MIN(occurred_at) first_seen,MAX(occurred_at) last_seen,"
+            "SELECT MIN(occurred_at) first_seen,MAX(occurred_at) last_seen,MAX(is_bot) is_bot,"
             . "COUNT(DISTINCT NULLIF(session_id,'')) session_count,SUM(event_type='pageview') total_pageviews,"
             . "SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(browser,'') ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) browser,"
             . "SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(os,'') ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) os,"
             . "SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(device_type,'') ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) device_type,"
-            . "SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(country_name,'') ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) country_name,"
-            . "SUBSTRING_INDEX(GROUP_CONCAT(asn ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) asn,"
-            . "SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(asn_org,'') ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) asn_org "
+            . "SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN country_code<>'' OR country_name<>'' OR region<>'' OR city<>'' THEN country_name END ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) country_name,"
+            . "SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN country_code<>'' OR country_name<>'' OR region<>'' OR city<>'' THEN city END ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) city,"
+            . "SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN country_code<>'' OR country_name<>'' OR region<>'' OR city<>'' THEN region END ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) region,"
+            . "SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN country_code<>'' OR country_name<>'' OR region<>'' OR city<>'' THEN country_code END ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) country_code,"
+            . "SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN COALESCE(asn,0)>0 OR asn_org<>'' THEN COALESCE(asn,0) END ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) asn,"
+            . "SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN COALESCE(asn,0)>0 OR asn_org<>'' THEN asn_org END ORDER BY occurred_at DESC,event_id DESC SEPARATOR '\\n'),'\\n',1) asn_org "
             . 'FROM tya_events WHERE visitor_id = ? AND '.ExclusionRules::analysisSql('tya_events')
         );
         $stmt->execute([$visitorId]);
@@ -181,9 +184,12 @@ SELECT e.session_id,MAX(e.visitor_id) visitor_id,MIN(e.occurred_at) session_star
        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN NULLIF(e.utm_source,'') END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) utm_source,
        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN NULLIF(e.utm_medium,'') END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) utm_medium,
        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.event_type='pageview' THEN NULLIF(e.utm_campaign,'') END ORDER BY e.occurred_at,e.event_id SEPARATOR '\n'),'\n',1) utm_campaign,
-       SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(e.country_name,'') ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) country_name,
-       SUBSTRING_INDEX(GROUP_CONCAT(e.asn ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) asn,
-       SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(e.asn_org,'') ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) asn_org,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.country_code<>'' OR e.country_name<>'' OR e.region<>'' OR e.city<>'' THEN e.country_name END ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) country_name,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.country_code<>'' OR e.country_name<>'' OR e.region<>'' OR e.city<>'' THEN e.city END ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) city,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.country_code<>'' OR e.country_name<>'' OR e.region<>'' OR e.city<>'' THEN e.region END ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) region,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN e.country_code<>'' OR e.country_name<>'' OR e.region<>'' OR e.city<>'' THEN e.country_code END ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) country_code,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN COALESCE(e.asn,0)>0 OR e.asn_org<>'' THEN COALESCE(e.asn,0) END ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) asn,
+       SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN COALESCE(e.asn,0)>0 OR e.asn_org<>'' THEN e.asn_org END ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) asn_org,
        SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(e.browser,'') ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) browser,
        SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(e.os,'') ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) os,
        SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(e.device_type,'') ORDER BY e.occurred_at DESC,e.event_id DESC SEPARATOR '\n'),'\n',1) device_type,

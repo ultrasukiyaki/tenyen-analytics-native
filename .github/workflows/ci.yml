@@ -26,6 +26,8 @@ jobs:
         run: composer validate --no-check-publish
       - name: Smoke tests
         run: php tests/run.php
+      - name: Visitor context and reverse DNS tests
+        run: php tests/visitor-context.php
       - name: Build release
         if: matrix.php == '8.4'
         run: tools/build-release.sh

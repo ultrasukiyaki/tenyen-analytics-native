@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Tenyen\Analytics\OrganizationClassifier;
 use Tenyen\Analytics\ExclusionRules;
+use Tenyen\Analytics\VisitorContext;
+use Tenyen\Analytics\HostnameCache;
 
 $root = dirname(__DIR__, 3);
 $configFile = $root . '/config.php';
@@ -104,7 +106,9 @@ function tya_api_like(string $value): string
 
 function tya_api_badge(array $classification): string
 {
-    return '<span class="badge badge--' . tya_api_h($classification['category']) . '" title="' . tya_api_h($classification['reason'] . ' / 確度 ' . $classification['confidence'] . '%') . '">' . tya_api_h($classification['icon'] . ' ' . $classification['label']) . '</span>';
+    global $services;
+    $translator = $services['translator'];
+    return '<span class="badge badge--' . tya_api_h($classification['category']) . '" title="' . tya_api_h($translator->get($classification['reason_key']) . ' / ' . $classification['confidence'] . '%') . '">' . tya_api_h($classification['icon'] . ' ' . $translator->get($classification['label_key'])) . '</span>';
 }
 
 function tya_api_duration(int $milliseconds): string
@@ -250,6 +254,7 @@ $offset = ($page - 1) * $perPage;
 $listStmt = $pdo->prepare('SELECT * FROM tya_events ' . $whereSql . ' ORDER BY event_id ' . $order . ' LIMIT ' . $perPage . ' OFFSET ' . $offset);
 $listStmt->execute($params);
 $rows = $listStmt->fetchAll();
+$hostnames = (new HostnameCache($pdo))->forRows($rows);
 $overrides = (array)($config['app']['organization_overrides'] ?? []);
 
 ob_start();
@@ -257,21 +262,21 @@ ob_start();
 <div class="tya-history-table-wrap">
 <table class="tya-history-table">
 <thead><tr>
-<th data-col="datetime">日時</th><th data-col="event">種別</th><th data-col="ip">IP</th><th data-col="location">地域</th><th data-col="organization">ASN／法人候補</th><th data-col="page">ページ</th><th data-col="referrer">参照元</th><th data-col="environment">環境</th><th data-col="details">詳細</th>
+<th data-col="datetime">日時</th><th data-col="event">種別</th><th data-col="ip"><?= tya_api_h($services['translator']->get('hostname.label')) ?></th><th data-col="location">地域</th><th data-col="organization">ASN／法人候補</th><th data-col="page">ページ</th><th data-col="referrer">参照元</th><th data-col="environment">環境</th><th data-col="details">詳細</th>
 </tr></thead><tbody>
 <?php if (!$rows): ?><tr><td colspan="9"><div class="tya-history-empty"><?= tya_api_h($services['translator']->get('history.empty')) ?></div></td></tr><?php endif; ?>
 <?php foreach ($rows as $row):
-    $ip = $crypto->decryptIp($row['ip_encrypted'] ?? '');
+    $hostname = empty($row['ip_hash']) ? $services['translator']->get('hostname.unavailable') : HostnameCache::display($hostnames[bin2hex((string)$row['ip_hash'])] ?? null, $services['translator']);
     $localTime = (new DateTimeImmutable((string)$row['occurred_at'], $utc))->setTimezone($timezone)->format('Y-m-d H:i:s');
-    $location = implode(' / ', array_filter([$row['country_name'], $row['region'], $row['city']]));
-    $asnText = trim(($row['asn'] ? 'AS' . (int)$row['asn'] . ' ' : '') . (string)$row['asn_org']);
+    $location = VisitorContext::location($row);
+    $asnText = VisitorContext::organization($row);
     $classification = OrganizationClassifier::classify($row['asn'] !== null ? (int)$row['asn'] : null, (string)$row['asn_org'], (bool)$row['is_bot'], $overrides);
-    $environment = trim((string)$row['browser'] . ' / ' . (string)$row['os'] . ' / ' . (string)$row['device_type'], ' /');
+    $environment = VisitorContext::environment($row);
 ?>
 <tr>
 <td data-col="datetime" title="<?= tya_api_h($localTime) ?>"><span class="tya-history-cell-primary"><?= tya_api_h($localTime) ?></span></td>
 <td data-col="event"><span class="tya-history-cell-primary"><?= tya_api_h($row['event_type']) ?></span><?php if ((int)$row['is_bot']): ?><span class="tya-history-cell-secondary">Bot</span><?php endif; ?></td>
-<td data-col="ip" class="tya-history-ip" title="<?= tya_api_h($ip ?: '―') ?>"><?= tya_api_h($ip ?: '―') ?></td>
+<td data-col="ip" class="tya-history-ip" title="<?= tya_api_h($hostname) ?>"><?= tya_api_h($hostname) ?></td>
 <td data-col="location" title="<?= tya_api_h($location ?: '―') ?>"><?= tya_api_h($location ?: '―') ?></td>
 <td data-col="organization" class="tya-history-org" title="<?= tya_api_h($asnText ?: '―') ?>"><?= tya_api_badge($classification) ?><span class="tya-history-cell-secondary"><?= tya_api_h($asnText ?: '―') ?></span></td>
 <td data-col="page" class="tya-history-page" title="<?= tya_api_h($row['page_title']) ?>"><span class="tya-history-cell-primary"><?= tya_api_page_link((string)$row['path'], (string)$row['page_title'], $siteBaseUrl) ?></span><span class="tya-history-cell-secondary"><code><?= tya_api_h($row['path']) ?></code></span></td>
@@ -281,7 +286,7 @@ ob_start();
 </tr>
 <tr class="tya-history-detail-row" hidden><td colspan="9"><div class="tya-history-detail-grid">
 <dl><dt>判定</dt><dd><?= tya_api_h($classification['reason'] . ' (' . $classification['confidence'] . '%)') ?></dd></dl>
-<dl><dt>IP</dt><dd><code><?= tya_api_h($ip ?: '―') ?></code></dd></dl>
+<dl><dt><?= tya_api_h($services['translator']->get('hostname.label')) ?></dt><dd><code><?= tya_api_h($hostname) ?></code></dd></dl>
 <dl><dt>地域</dt><dd><?= tya_api_h($location ?: '―') ?></dd></dl>
 <dl><dt>ASN／組織</dt><dd><?= tya_api_h($asnText ?: '―') ?></dd></dl>
 <dl><dt>滞在</dt><dd><?= tya_api_h(tya_api_duration((int)$row['duration_ms'])) ?></dd></dl>

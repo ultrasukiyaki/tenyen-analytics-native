@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'hostname.label' => 'Hostname',
+    'hostname.pending' => 'Awaiting hostname lookup',
+    'hostname.unavailable' => 'Hostname unavailable',
     'common.loading' => 'Loading…',
     'common.ready' => 'Ready',
     'common.apply' => 'Apply',

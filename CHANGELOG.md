@@ -2,6 +2,19 @@ English | [日本語](CHANGELOG.ja.md)
 
 # Changelog
 
+## 0.9.0 - 2026-10-29
+
+### Added
+
+- Shared country/code, region/city, ASN/organization, and environment presentation across visitor-context views.
+- Location in recent views and realtime; complete location and ASN context in session and visitor details.
+- Cached PTR hostname display instead of raw IP in access history, with a bounded CLI worker, positive/negative expiry, failure backoff, and orphan cleanup.
+- Idempotent hostname-cache table migration and English/Japanese setup documentation.
+
+### Fixed
+
+- Session pagination now uses 25 rows when the page-size parameter is omitted.
+
 ## 0.8.1 - 2026-08-25
 
 ### Fixed

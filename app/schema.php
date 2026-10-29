@@ -58,6 +58,15 @@ CREATE TABLE IF NOT EXISTS tya_events (
     ,KEY event_name_time (event_name, occurred_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS tya_hostname_cache (
+    ip_hash BINARY(32) NOT NULL,
+    hostname VARCHAR(253) NOT NULL DEFAULT '',
+    status VARCHAR(16) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    PRIMARY KEY (ip_hash),
+    KEY expiry (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS tya_annotations (
     annotation_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     entity_type VARCHAR(32) NOT NULL,
