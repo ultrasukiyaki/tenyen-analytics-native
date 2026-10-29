@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Tenyen\Analytics\OrganizationClassifier;
 use Tenyen\Analytics\SessionAnalytics;
+use Tenyen\Analytics\VisitorContext;
 
 $root = dirname(__DIR__, 3);
 $configFile = $root . '/config.php';
@@ -67,10 +68,10 @@ $summaryRows = static function (array $row) use ($h, $t, $local, $duration, $ove
         'Traffic channel' => (string)($row['traffic_channel'] ?? 'Unknown'),
         'Referrer domain' => (string)($row['referrer_domain'] ?? '—'),
         'UTM source / medium / campaign' => trim((string)($row['utm_source'] ?? '') . ' / ' . (string)($row['utm_medium'] ?? '') . ' / ' . (string)($row['utm_campaign'] ?? ''), ' /') ?: '—',
-        $t('sessions.location') => (string)($row['country_name'] ?? '—'),
-        'ASN / ' . $t('sessions.organization') => trim(((int)($row['asn'] ?? 0) ? 'AS' . (int)$row['asn'] . ' ' : '') . (string)($row['asn_org'] ?? '')) ?: '—',
-        $t('sessions.category') => $t($classification['label_key']),
-        $t('sessions.environment') => trim((string)($row['browser'] ?? '') . ' / ' . (string)($row['os'] ?? '') . ' / ' . (string)($row['device_type'] ?? ''), ' /') ?: '—',
+        $t('sessions.location') => VisitorContext::location($row),
+        'ASN / ' . $t('sessions.organization') => VisitorContext::organization($row),
+        $t('sessions.category') => $t($classification['label_key']) . ' / ' . $t($classification['reason_key']) . ' / ' . $classification['confidence'] . '%',
+        $t('sessions.environment') => VisitorContext::environment($row),
         $t('sessions.actor') => !empty($row['is_bot']) ? 'Bot' : $t('sessions.human'),
     ];
     $html = '';
@@ -86,6 +87,7 @@ try {
         ob_start(); ?>
         <div class="journey-dialog-head"><h2><?= $h($t('sessions.detail')) ?></h2><button type="button" class="button secondary" data-journey-close><?= $h($t('common.close')) ?></button></div>
         <dl class="journey-summary"><?= $summaryRows($detail['summary']) ?></dl>
+        <p class="note"><?= $h($t('organizations.disclaimer')) ?></p>
         <?php if (($detail['summary']['visitor_id'] ?? '') !== ''): ?><button class="button secondary" data-visitor-id="<?= $h($detail['summary']['visitor_id']) ?>"><?= $h($t('sessions.visitor_history')) ?></button><?php endif; ?>
         <h3><?= $h($t('sessions.journey')) ?></h3><ol class="journey-steps">
         <?php foreach ($detail['events'] as $event): ?><li><div class="journey-step-head"><time><?= $h($local($event['occurred_at'])) ?></time><strong><?= $h($event['event_type']) ?><?= $event['event_name'] ? ': ' . $h($event['event_name']) : '' ?></strong></div>
@@ -108,9 +110,13 @@ try {
           <div><dt><?= $h($t('visitors.last_seen')) ?></dt><dd><?= $h($local($visitor['summary']['last_seen'])) ?></dd></div>
           <div><dt><?= $h($t('visitors.sessions')) ?></dt><dd><?= (int)$visitor['summary']['session_count'] ?></dd></div>
           <div><dt><?= $h($t('visitors.total_pv')) ?></dt><dd><?= (int)$visitor['summary']['total_pageviews'] ?></dd></div>
-          <div><dt><?= $h($t('sessions.environment')) ?></dt><dd><?= $h(trim($visitor['summary']['browser'] . ' / ' . $visitor['summary']['os'] . ' / ' . $visitor['summary']['device_type'], ' /') ?: '—') ?></dd></div>
-          <div><dt><?= $h($t('sessions.location')) ?></dt><dd><?= $h($visitor['summary']['country_name'] ?: '—') ?></dd></div>
+          <div><dt><?= $h($t('sessions.environment')) ?></dt><dd><?= $h(VisitorContext::environment($visitor['summary'])) ?></dd></div>
+          <div><dt><?= $h($t('sessions.location')) ?></dt><dd><?= $h(VisitorContext::location($visitor['summary'])) ?></dd></div>
+          <div><dt><?= $h($t('sessions.actor')) ?></dt><dd><?= !empty($visitor['summary']['is_bot']) ? 'Bot' : $h($t('sessions.human')) ?></dd></div>
+          <div><dt>ASN / <?= $h($t('sessions.organization')) ?></dt><dd><?= $h(VisitorContext::organization($visitor['summary'])) ?></dd></div>
+          <div><dt><?= $h($t('sessions.category')) ?></dt><dd><?php $classification = OrganizationClassifier::classify(isset($visitor['summary']['asn']) ? (int)$visitor['summary']['asn'] : null, (string)$visitor['summary']['asn_org'], (bool)$visitor['summary']['is_bot'], $overrides); ?><?= $h($t($classification['label_key'])) ?></dd></div>
         </dl>
+        <p class="note"><?= $h($t('organizations.disclaimer')) ?></p>
         <?php
         $landings=[];
         foreach($visitor['sessions'] as $session){$landing=(string)($session['landing_page']??'');if($landing!=='')$landings[$landing]=($landings[$landing]??0)+1;}
@@ -137,7 +143,7 @@ try {
     ob_start(); ?>
     <div class="table-wrap"><table><thead><tr><th><?= $h($t('sessions.start')) ?></th><th><?= $h($t('sessions.visitor')) ?></th><th>PV</th><th><?= $h($t('sessions.estimated_duration')) ?></th><th><?= $h($t('sessions.landing')) ?></th><th><?= $h($t('sessions.exit')) ?></th><th><?= $h($t('sessions.referrer')) ?></th><th><?= $h($t('sessions.location')) ?></th><th>ASN / <?= $h($t('sessions.organization')) ?></th><th><?= $h($t('sessions.environment')) ?></th><th><?= $h($t('sessions.actor')) ?></th><th><?= $h($t('common.details')) ?></th></tr></thead><tbody>
     <?php if (!$result['items']): ?><tr><td colspan="12"><?= $h($t('sessions.empty')) ?></td></tr><?php endif; ?>
-    <?php foreach ($result['items'] as $row): $classification=OrganizationClassifier::classify(isset($row['asn'])?(int)$row['asn']:null,(string)$row['asn_org'],(bool)$row['is_bot'],$overrides); ?><tr><td><?= $h($local($row['session_start'])) ?><br><small><?= $h($local($row['last_activity'])) ?></small></td><td class="journey-long"><button class="link-button" data-visitor-id="<?= $h($row['visitor_id']) ?>"><?= $h($row['visitor_id'] ?: '—') ?></button><?php if($row['visitor_id']): ?><br><button class="button secondary" data-edit-annotation data-entity-type="visitor" data-entity-key="<?= $h($row['visitor_id']) ?>" data-original="<?= $h($row['visitor_id']) ?>"><?= $h($t('common.edit')) ?></button><?php endif; ?></td><td><?= (int)$row['pageviews'] ?></td><td><?= $h($duration((int)$row['engaged_time_ms'])) ?></td><td class="journey-long"><?= $h($row['landing_page'] ?: '—') ?></td><td class="journey-long"><?= $h($row['exit_page'] ?: '—') ?></td><td class="journey-long"><?= $h($row['referrer'] ?: 'Direct') ?></td><td><?= $h($row['country_name'] ?: '—') ?></td><td class="journey-long"><?= $h(trim(((int)$row['asn']?'AS'.(int)$row['asn'].' ':'').$row['asn_org']) ?: '—') ?><br><small><?= $h($t($classification['label_key'])) ?></small></td><td><?= $h(trim($row['browser'] . ' / ' . $row['os'] . ' / ' . $row['device_type'], ' /') ?: '—') ?></td><td><?= !empty($row['is_bot']) ? 'Bot' : $h($t('sessions.human')) ?></td><td><button class="button secondary" data-session-id="<?= $h($row['session_id']) ?>"><?= $h($t('common.details')) ?></button></td></tr><?php endforeach; ?>
+    <?php foreach ($result['items'] as $row): $classification=OrganizationClassifier::classify(isset($row['asn'])?(int)$row['asn']:null,(string)$row['asn_org'],(bool)$row['is_bot'],$overrides); ?><tr><td><?= $h($local($row['session_start'])) ?><br><small><?= $h($local($row['last_activity'])) ?></small></td><td class="journey-long"><button class="link-button" data-visitor-id="<?= $h($row['visitor_id']) ?>"><?= $h($row['visitor_id'] ?: '—') ?></button><?php if($row['visitor_id']): ?><br><button class="button secondary" data-edit-annotation data-entity-type="visitor" data-entity-key="<?= $h($row['visitor_id']) ?>" data-original="<?= $h($row['visitor_id']) ?>"><?= $h($t('common.edit')) ?></button><?php endif; ?></td><td><?= (int)$row['pageviews'] ?></td><td><?= $h($duration((int)$row['engaged_time_ms'])) ?></td><td class="journey-long"><?= $h($row['landing_page'] ?: '—') ?></td><td class="journey-long"><?= $h($row['exit_page'] ?: '—') ?></td><td class="journey-long"><?= $h($row['referrer'] ?: 'Direct') ?></td><td><?= $h(VisitorContext::location($row)) ?></td><td class="journey-long"><?= $h(VisitorContext::organization($row)) ?><br><small><?= $h($t($classification['label_key'])) ?></small></td><td><?= $h(VisitorContext::environment($row)) ?></td><td><?= !empty($row['is_bot']) ? 'Bot' : $h($t('sessions.human')) ?></td><td><button class="button secondary" data-session-id="<?= $h($row['session_id']) ?>"><?= $h($t('common.details')) ?></button></td></tr><?php endforeach; ?>
     </tbody></table></div>
     <nav class="journey-pagination" aria-label="<?= $h($t('sessions.pagination')) ?>"><?php if ($result['page'] > 1): ?><button data-session-page="<?= $result['page'] - 1 ?>">‹</button><?php endif; ?><span><?= $result['page'] ?> / <?= $result['pages'] ?></span><?php if ($result['page'] < $result['pages']): ?><button data-session-page="<?= $result['page'] + 1 ?>">›</button><?php endif; ?></nav>
     <?php $json(['ok' => true, 'html' => (string)ob_get_clean(), 'total' => $result['total'], 'page' => $result['page'], 'pages' => $result['pages']]);

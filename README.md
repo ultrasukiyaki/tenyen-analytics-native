@@ -10,6 +10,8 @@ The application stores analytics on infrastructure you control. It does not use 
 
 ## Features
 
+Version 0.9.0 completes country/location and ASN context across recent views, realtime, sessions, and visitor details. Access history displays cached reverse-DNS hostnames instead of IP addresses. Configure the new minute-level hostname worker as described in [visitor context and hostname display](docs/VISITOR_CONTEXT.md).
+
 - Pageview, engagement, link, download, 404, and bounded custom-event collection
 - Traffic channels, referrer domains, and first-touch UTM campaign attribution
 - Encrypted raw-IP storage with HMAC exact-match search
@@ -93,7 +95,7 @@ Run `php bin/doctor.php` for diagnostics, `php bin/aggregate.php incremental` fo
 
 ## Updating from an earlier version
 
-Back up first, then overwrite application files while preserving `config.php`, `data/`, `storage/`, and `storage/installed.lock`. Upgrading from v0.8.0 to v0.8.1 changes no database schema. Existing configuration, installation lock, administrator and database credentials, encryption keys, site token, encrypted MaxMind credentials, City/ASN MMDB files, language preference, analytics, aggregates, exclusions, metadata, saved views, and lifecycle state remain supported.
+Back up first, then overwrite application files while preserving `config.php`, `data/`, `storage/`, and `storage/installed.lock`. Upgrading from v0.8.1 to v0.9.0 automatically adds the hostname cache table. Existing configuration, installation lock, administrator and database credentials, encryption keys, site token, encrypted MaxMind credentials, City/ASN MMDB files, language preference, analytics, aggregates, exclusions, metadata, saved views, and lifecycle state remain supported.
 
 Bounce rate remains one-page entry sessions divided by entry sessions. Engagement averages are calculated from preserved sums and sample counts, never by averaging daily averages. Daily distinct visitors are estimates and can count the same anonymous browser again on another day. Notifications, multi-site, and roles remain deferred.
 

@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'hostname.label' => 'ホスト名',
+    'hostname.pending' => 'ホスト名の取得待ち',
+    'hostname.unavailable' => 'ホスト名を取得できません',
     'common.loading' => '読み込んでいます…',
     'common.ready' => '準備完了',
     'common.apply' => '適用',

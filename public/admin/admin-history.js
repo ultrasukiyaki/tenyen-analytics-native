@@ -20,7 +20,7 @@
     const lifecycle = new AbortController();
     const signal = lifecycle.signal;
     const storageKey = config.storageKey || 'tenyenAnalytics.history.v1';
-    const defaults = Object.assign({collapsed:false,density:'compact',perPage:25,actor:'human',event:'all',autoRefresh:0,wrap:false,stickyHeader:true,order:'desc',visibleColumns:['datetime','event','organization','page','referrer','environment','details']}, config.defaults || {});
+    const defaults = Object.assign({collapsed:false,density:'compact',perPage:25,actor:'human',event:'all',autoRefresh:0,wrap:false,stickyHeader:true,order:'desc',visibleColumns:['datetime','event','ip','location','organization','page','referrer','environment','details']}, config.defaults || {});
     const form = section.querySelector('[data-history-form]');
     const body = section.querySelector('[data-history-body]');
     const settings = section.querySelector('[data-history-settings]');

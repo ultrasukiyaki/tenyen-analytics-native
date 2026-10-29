@@ -23,7 +23,7 @@ final class GeoLite2Updater
     private const MAX_ARCHIVE = 157286400;
     private const MAX_MMDB = 104857600;
     private const MAX_ENTRIES = 200;
-    private const USER_AGENT = 'Tenyen-Analytics/0.8.1';
+    private const USER_AGENT = 'Tenyen-Analytics/0.9.0';
 
     /** @var null|callable */
     private $httpDouble;

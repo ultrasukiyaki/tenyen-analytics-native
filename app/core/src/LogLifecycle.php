@@ -67,6 +67,7 @@ final class LogLifecycle
                 $deleted+=$count;$state['cleanup']['deleted']=(int)($state['cleanup']['deleted']??0)+$count;$this->write($state);
                 if(count($ids)<$batchSize)break;
             }
+            (new HostnameCache($this->pdo))->prune();
             $remaining=$this->pdo->prepare('SELECT COUNT(*) FROM tya_events WHERE occurred_at<?');$remaining->execute([$cutoff]);$left=(int)$remaining->fetchColumn();$now=gmdate(DATE_ATOM);
             $state['cleanup']=array_replace($state['cleanup'],['status'=>$left>0?'paused':'success','last_run'=>$now,'next_run'=>gmdate(DATE_ATOM,time()+86400),'remaining'=>$left,'cutoff'=>$left>0?$cutoff:null,'error'=>null]);$this->write($state);
             return ['deleted'=>$deleted,'remaining'=>$left]+$state['cleanup'];
