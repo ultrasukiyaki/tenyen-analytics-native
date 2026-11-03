@@ -10,7 +10,7 @@ The application stores analytics on infrastructure you control. It does not use 
 
 ## Features
 
-Version 0.9.0 completes country/location and ASN context across recent views, realtime, sessions, and visitor details. Access history displays cached reverse-DNS hostnames instead of IP addresses. Configure the new minute-level hostname worker as described in [visitor context and hostname display](docs/VISITOR_CONTEXT.md).
+Version 0.9.1 prefers cached reverse-DNS hostnames in access history and displays the original stored IP when a hostname is unavailable or pending. Country/location and ASN context introduced in v0.9.0 remains available across recent views, realtime, sessions, and visitor details. Configure the minute-level hostname worker as described in [visitor context and hostname display](docs/VISITOR_CONTEXT.md). Upgrading from v0.9.0 requires no database schema changes.
 
 - Pageview, engagement, link, download, 404, and bounded custom-event collection
 - Traffic channels, referrer domains, and first-touch UTM campaign attribution

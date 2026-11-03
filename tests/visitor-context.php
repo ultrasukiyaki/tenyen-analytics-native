@@ -43,6 +43,12 @@ $check(HostnameCache::display(['status'=>'resolved','hostname'=>'<script>','expi
 foreach(['unavailable','failed'] as $status)$check(HostnameCache::display(['status'=>$status,'hostname'=>'','expires_at'=>$future],$translator)==='Hostname unavailable','negative display '.$status);
 $check(HostnameCache::display(['status'=>'resolved','hostname'=>'dns.example.com','expires_at'=>'2000-01-01 00:00:00'],$translator)==='Awaiting hostname lookup','expired cache');
 $history=file_get_contents(dirname(__DIR__).'/public/admin/api/events.php');
-$check(!str_contains($history,'decryptIp(')&&!str_contains($history,'tya_api_h($ip'),'history never returns raw IP');
+$check(str_contains($history,"$" . "crypto->decryptIp($" . "row['ip_encrypted'] ?? null)"), 'history uses the stored decrypted IP as fallback');
+$check(HostnameCache::display(null,$translator,'203.0.113.5')==='203.0.113.5','pending lookup falls back to IPv4');
+$check(HostnameCache::display(['status'=>'resolved','hostname'=>'dns.example.com','expires_at'=>$future],$translator,'203.0.113.5')==='dns.example.com','resolved hostname takes precedence over IP');
+foreach(['unavailable','failed'] as $status)$check(HostnameCache::display(['status'=>$status,'hostname'=>'','expires_at'=>$future],$translator,'2001:db8::5')==='2001:db8::5','negative lookup falls back to IPv6 '.$status);
+$check(HostnameCache::display(['status'=>'resolved','hostname'=>'dns.example.com','expires_at'=>'2000-01-01 00:00:00'],$translator,'203.0.113.5')==='203.0.113.5','expired lookup falls back to IP');
+$check(HostnameCache::display(['status'=>'resolved','hostname'=>'<script>','expires_at'=>$future],$translator,'203.0.113.5')==='203.0.113.5','invalid hostname falls back to IP');
+$check(HostnameCache::display(null,$translator,'<script>')==='Awaiting hostname lookup','invalid fallback rejected');
 $check(!str_contains(file_get_contents(dirname(__DIR__).'/public/collect.php'),'ReverseDns'),'collector does not resolve DNS');
 echo "$count checks passed.\n";

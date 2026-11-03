@@ -2,6 +2,12 @@ English | [日本語](CHANGELOG.ja.md)
 
 # Changelog
 
+## 0.9.1 - 2026-11-03
+
+### Fixed
+
+- Show the stored IP address in access-history cells, tooltips, and details when a hostname is pending, expired, unavailable, or invalid. Resolved hostnames retain priority.
+
 ## 0.9.0 - 2026-10-29
 
 ### Added
