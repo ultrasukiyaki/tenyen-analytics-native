@@ -266,7 +266,11 @@ ob_start();
 </tr></thead><tbody>
 <?php if (!$rows): ?><tr><td colspan="9"><div class="tya-history-empty"><?= tya_api_h($services['translator']->get('history.empty')) ?></div></td></tr><?php endif; ?>
 <?php foreach ($rows as $row):
-    $hostname = empty($row['ip_hash']) ? $services['translator']->get('hostname.unavailable') : HostnameCache::display($hostnames[bin2hex((string)$row['ip_hash'])] ?? null, $services['translator']);
+    $hostname = HostnameCache::display(
+        $hostnames[bin2hex((string)($row['ip_hash'] ?? ''))] ?? null,
+        $services['translator'],
+        $crypto->decryptIp($row['ip_encrypted'] ?? null)
+    );
     $localTime = (new DateTimeImmutable((string)$row['occurred_at'], $utc))->setTimezone($timezone)->format('Y-m-d H:i:s');
     $location = VisitorContext::location($row);
     $asnText = VisitorContext::organization($row);

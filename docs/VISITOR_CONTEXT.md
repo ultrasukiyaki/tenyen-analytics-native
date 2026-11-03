@@ -2,7 +2,7 @@
 
 Dashboard recent views and realtime rows show stored country code/name, region, and city alongside ASN and registered organization. Session lists, session details, and visitor details use the same formatting. Missing values appear as `—`. ASN registrations and PTR hostnames describe network infrastructure; neither verifies a visitor's employer or identity.
 
-Access history displays a reverse-DNS hostname instead of the decrypted IP, including its tooltip and expanded details. If no cached result exists, the UI shows “Awaiting hostname lookup”; negative or failed results show “Hostname unavailable”. Existing browser column preferences are retained: enable Hostname and Location in display settings if previously hidden.
+Access history prefers a cached reverse-DNS hostname, including its tooltip and expanded details. When the hostname is pending, expired, unavailable, or invalid, it displays the original stored IP address. If the stored IP cannot be recovered, the UI shows the lookup status. Existing browser column preferences are retained: enable Hostname / IP and Location in display settings if previously hidden.
 
 ## Enable hostname refresh
 
@@ -12,7 +12,7 @@ Schedule this CLI worker every minute using your hosting scheduler or cron, with
 * * * * * /usr/bin/php /path/to/tenyen-analytics/bin/resolve-hostnames.php
 ```
 
-Without this worker, uncached hostnames remain pending. It requires PHP UDP stream support and a valid nameserver in `/etc/resolv.conf`. It uses the first configured resolver and never calls an external lookup API. Queries send the public IP to that resolver. Private, loopback, link-local, documentation, and non-public addresses are skipped.
+Without this worker, uncached rows display their stored IP addresses. It requires PHP UDP stream support and a valid nameserver in `/etc/resolv.conf`. It uses the first configured resolver and never calls an external lookup API. Queries send the public IP to that resolver. Private, loopback, link-local, documentation, and non-public addresses are skipped.
 
 Each run handles up to 20 unique IP hashes, one query at a time, with a 500 ms DNS timeout and a 15-second processing budget. A database advisory lock prevents overlapping workers. Recent events take priority. Successful results refresh after 24 hours, missing PTR records after six hours, and resolver failures after one hour. Truncated or malformed DNS responses fail safely and use the failure delay; TCP fallback is not performed.
 

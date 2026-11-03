@@ -17,11 +17,12 @@ final class HostnameCache
         foreach ($statement->fetchAll() as $row) $result[bin2hex($row['ip_hash'])] = $row;
         return $result;
     }
-    public static function display(?array $entry, Translator $translator): string
+    public static function display(?array $entry, Translator $translator, string $fallbackIp = ''): string
     {
-        if (!$entry || (string)$entry['expires_at'] <= gmdate('Y-m-d H:i:s')) return $translator->get('hostname.pending');
+        $fallback = filter_var($fallbackIp, FILTER_VALIDATE_IP) !== false ? $fallbackIp : '';
+        if (!$entry || (string)$entry['expires_at'] <= gmdate('Y-m-d H:i:s')) return $fallback !== '' ? $fallback : $translator->get('hostname.pending');
         $hostname = ReverseDns::hostname((string)($entry['hostname'] ?? ''));
-        return $entry['status'] === 'resolved' && $hostname !== '' ? $hostname : $translator->get('hostname.unavailable');
+        return $entry['status'] === 'resolved' && $hostname !== '' ? $hostname : ($fallback !== '' ? $fallback : $translator->get('hostname.unavailable'));
     }
     /** CLI worker: at most 20 queries, one at a time, under a database lock. */
     public function run(Crypto $crypto, ?callable $resolve = null): array
